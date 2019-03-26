@@ -18,9 +18,9 @@ rootPathDir = rdir([analysisPath '\Expr*']) ;
 
 for i = 1:length(rootPathDir)
    dataFolder = rootPathDir(i).name ;
-   dataFolderDir = dir(dataFolder) ; 
+   dataFolderDir = dir([dataFolder '\*results.mat']) ; 
    
-   if (sum([dataFolderDir(:).bytes]) < MIN_MEMORY)
+   if (sum([dataFolderDir(:).bytes]) < MIN_MEMORY) || isempty(dataFolderDir)
        movefile(dataFolder, failPath) ; 
    else
        try 

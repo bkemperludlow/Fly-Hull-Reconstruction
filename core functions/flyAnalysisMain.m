@@ -127,7 +127,7 @@ try
         return ; %continue
     else
         % otherwise calculate euler angles 
-        data = estimateFlyAngles(exprNum, movNum, savePath, largePertFlag) ; 
+        data = estimateFlyAngles(ExprNum, MovNum, savePath, largePertFlag) ; 
     end
 
 % if we reach this point, an error was thrown, and we can try to note it
