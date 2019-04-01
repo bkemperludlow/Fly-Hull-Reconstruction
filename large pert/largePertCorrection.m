@@ -85,6 +85,7 @@ leftVelRot = nan(N_frames, 3) ;
 
 rotMats = nan(3,3,N_frames) ;
 
+anglesBodyFrame = nan(N_frames, 8) ; 
 % roll is sort of a weird one, since erroneous points can throw off the
 % whole spline. so we'll just assume the first one is okay, and then
 % calculate our own roll
@@ -322,7 +323,7 @@ for i = 1:N_frames
             rotateWingVecs(leftWingCM(i,:), leftSpanHats(i,:), ...
             leftChordHats(i,:), leftChordAltHats(i,:), bodyCM(i,:), M) ;
         
-        %----------------------------------------------------------------------
+        %------------------------------------------------------------------
         % plot check to make sure that rotations are working correctly
         if (0)
             % hat vectors
@@ -376,7 +377,7 @@ for i = 1:N_frames
             %             zlabel('Z')
         end
         
-        %----------------------------------------------------------------------
+        %------------------------------------------------------------------
         %% perform heuristic checks on rotated fly
         %---------------------------------------
         % first check if we need to swap wings
@@ -562,6 +563,7 @@ for i = 1:N_frames
             rotChordL = - rotChordL ;
             cInvFlagL(i) = true ;
         end
+        %---------------------------------------
         %% store new wing vectors
         
         % right wing
@@ -576,11 +578,15 @@ for i = 1:N_frames
         leftChordRot(i,:) = rotChordL ;
         leftChordAltRot(i,:) = rotChordAltL ;
         
+        %----------------------------------------------
+        %% calculate wing angles in transformed frame
+        anglesBodyFrame(i,:) = calcWingAnglesLargePert(rotSpanR, rotChordR, ...
+            rotSpanL, rotChordL) ; 
         
     end
 end
 
-%% calculate wing angles based on the vectors from the transformed frame
+
 
 
 %% update data structure and take care of wing L<->R swapping
@@ -649,14 +655,18 @@ flagStruct.newRhoFlag = newRhoFlag ;
 disp('Done updating data structure')
 
 %% calculate wing/body angles since we have the coordinate transforms
-% assigne empty arrays for angle data
+% first save body frame angles calculated during correction
+anglesBodyFrameFilt = filterAnglesBodyFrame(anglesBodyFrame) ; 
+data_new.anglesBodyFrameLP = anglesBodyFrameFilt ; 
+
+% then calculate angles using standard approach
 [anglesLabFrame, anglesBodyFrame, ~, ~, ~, ~, ~, ~, ~] = ...
     calcAnglesRaw_Sam(data_new, false ,true) ; 
 
-
-% these arrays in data structure 
+% add these arrays into data structure 
 data_new.anglesLabFrame = anglesLabFrame ; 
 data_new.anglesBodyFrame = anglesBodyFrame ; 
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -845,4 +855,79 @@ rollVecRot2 = rollVecRot2 ./ norm(rollVecRot2) ;
 % now find roll angle 
 rho_curr = acos( rollVecRot2(2) ) * sign(rollVecRot2(3)) ; % RADIANS!
 rollVecOut = rollVecRot2 ; 
+end
+
+%----------------------------------------------------------------
+% function to filter body frame wing angles
+function anglesBodyFrameFilt = ...
+    filterAnglesBodyFrame(anglesBodyFrame, tms, plotFlag)
+%--------------------------------------------
+% inputs and params
+if ~exist('plotFlag','var')
+    plotFlag = false ; 
+end
+
+cutOffLow = -170 ; 
+cutOffHigh = -10 ; 
+
+fitType = 'smoothingspline' ; 
+
+% get indices for wing angles to filter
+defineConstantsScript ; 
+
+%--------------------------------------------
+% read in stroke angle
+phiR = -1*anglesBodyFrame(:,PHIR) * (180/pi)^2 ;
+phiL = anglesBodyFrame(:,PHIL) * (180/pi)^2 ; 
+
+% based on our method of calculation in this script, stroke angles are in 
+% the range [-180, 180]. so stroke angles below zero could either be 1)
+% actually over 180 and modded down or 2) errors. first deal with that
+shiftUpIdx_R = (phiR <= cutOffLow) ; 
+errorIdx_R = (phiR <= cutOffHigh) & (phiR > cutOffLow) ;
+phiR(shiftUpIdx_R) = phiR(shiftUpIdx_R) + 360 ; 
+phiR(errorIdx_R) = nan ; 
+
+shiftUpIdx_L = (phiL <= cutOffLow) ; 
+errorIdx_L = (phiL <= cutOffHigh) & (phiL > cutOffLow) ;
+phiL(shiftUpIdx_L) = phiL(shiftUpIdx_L) + 360 ; 
+phiL(errorIdx_L) = nan ; 
+
+% now perform hampel filter to try to remove erroneous points
+[~, hampelR] = hampel(phiR, 7, 2) ;
+[~, hampelL] = hampel(phiL, 7, 2) ;
+
+phiR(hampelR) = NaN ;
+phiL(hampelL) = NaN ;
+
+% fit to fourier series to attemtpt to smooth 
+nan_idx_R = isnan(phiR) ; 
+nan_idx_L = isnan(phiL) ; 
+
+c_phiR = fit(tms(~nan_idx_R)', phiR(~nan_idx_R),fitType) ; 
+c_phiL = fit(tms(~nan_idx_L)', phiL(~nan_idx_L),fitType) ; 
+
+phiR_smooth = c_phiR(tms) ; 
+phiL_smooth = c_phiL(tms) ; 
+
+% use numerical derivatives to pick out any other jumps
+% phiR_diff = diff(phiR_smooth) ; 
+% phiL_diff = diff(phiL_smooth) ; 
+% 
+% phiL_diff_z = (abs(phiL_diff) - mean(abs(phiL_diff)))./std(abs(phiL_diff)) ;  
+% plot results?
+if plotFlag
+    figure ; 
+    hold on
+    plot(tms, phiR, 'ro')
+    plot(tms, phiR_smooth, 'r-')
+    plot(tms, phiL, 'bo')
+    plot(tms, phiL_smooth, 'b-')
+    axis tight
+end
+
+% generate output array
+anglesBodyFrameFilt = anglesBodyFrame ; 
+anglesBodyFrameFilt(:, PHIR) = -1*phiR_smooth ;
+anglesBodyFrameFilt(:, PHIL) = phiL_smooth ;
 end
