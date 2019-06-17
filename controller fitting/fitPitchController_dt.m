@@ -4,11 +4,11 @@
 %rootPath = 'G:\Janelia Flies\kir2.1 flies\Analysis\' ;
 %rootPath = 'H:\Fly Data\Janelia Flies\kir round 2\19_31102016\Analysis\' ;
 %rootPath = 'G:\Janelia Flies\kir2.1 flies round 2\Analysis_additional_expr\' ;
-rootPath = 'I:\Fly Data\VNC Motor Lines\48_12122018\Analysis\' ; 
+rootPath = 'D:\Fly Data\VNC Motor Lines\62_15042019\Analysis\' ; 
 
 
-ExprNum = 48 ;
-MovNum = 30 ;
+ExprNum = 62 ;
+MovNum = 25 ;
 pitchType = -1 ;
 flyType = 2 ;
 plotFlag1 = false ;
@@ -40,7 +40,7 @@ N = length(fwdFlipTimes) ;
 %% make discretized t space
 
 deltaT_min = 0.004 ;
-deltaT_max = 0.013 ;
+deltaT_max = 0.013 ; %0.013
 deltaT_N = 60 ;
 
 deltaT_space = linspace(deltaT_min, deltaT_max, deltaT_N) ;

@@ -8,7 +8,7 @@ function data = calcAnglesMain(dataPath, largePertFlag, saveFlag, plotFlag )
 if ~exist('dataPath','var') || isempty(dataPath)
     %mFilePath = mfilename('fullpath') ;
     %[filterSpec,~,~] = fileparts(mFilePath) ;
-    filterSpec = 'D:\Fly Data\' ;
+    filterSpec = 'D:\Fly Data\VNC Motor Lines\63_19042019\Analysis\Pitch Down\' ;
     filepath_cell = uipickfiles('FilterSpec',filterSpec,...
         'Type',{'*.mat', 'MAT-files' },'NumFiles',1) ;
     dataPath = filepath_cell{1} ;
@@ -18,7 +18,7 @@ if ~exist('largePertFlag','var') || isempty(largePertFlag)
     largePertFlag = false ;
 end
 if ~exist('saveFlag','var') || isempty(saveFlag)
-    saveFlag = true ;
+    saveFlag = true ; % true
 end
 if ~exist('plotFlag','var') || isempty(plotFlag)
     plotFlag = true ;
@@ -83,7 +83,7 @@ ignoreIndR = unique([find(isnan(phiR))' ignoreFrames]) ;
 %phiR = phiR + 360 ;
 
 for i = 1:length(phiR)
-    while phiR(i) < 0
+    while phiR(i) < -90
         phiR(i) = phiR(i) + 360 ;
     end
     while phiR(i) > 270

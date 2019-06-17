@@ -22,7 +22,7 @@
 %       -chord_alt = estimate of alternate chord vector
 %       -N_vox = number of voxels in wing
 %--------------------------------------------------------------------------
-function [spanHat, chordHat, chordAltHat, Nvox] = ...
+function [spanHat, chordHat, chordAltHat, Nvox, wingTip] = ...
     estimate_wing_vecs(wing_vox, ref_vecs, wingLength, span_ref, chord_ref, wingCM)
 %--------------------------------------------------------------------------
 %% deal with function inputs

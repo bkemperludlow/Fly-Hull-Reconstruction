@@ -145,11 +145,14 @@ toc
 
 dim = all_fly_bw_xy.dim ;
 newdim = dim ;
-newdim(1) = dim(1) - 2*DELTA ;
-newdim(2) = 3 ; % three cams
+% newdim(1) = dim(1) - 2*DELTA ;
+% newdim(2) = 3 ; % three cams
+newdim(2) = dim(2) - 2*DELTA ;
+newdim(1) = 3 ; % three cams
 
 all_fly_bw = init4D(newdim) ; 
-Nimages = newdim(1) ;
+% Nimages = newdim(1) ;
+Nimages = newdim(2) ;
 disp('Combining...')
 for k=1:Nimages
     % combine XY
@@ -176,10 +179,14 @@ end
 
 dim = body_only_bw_xy.dim ;
 newdim = dim ;
-newdim(1) = dim(1) - 2*DELTA ;
-newdim(2) = 3 ; % three cams
+% newdim(1) = dim(1) - 2*DELTA ;
+% newdim(2) = 3 ; % three cams
+% body_only_bw = init4D(newdim) ; 
+% Nimages = newdim(1) ;
+newdim(2) = dim(2) - 2*DELTA ;
+newdim(1) = 3 ; % three cams
 body_only_bw = init4D(newdim) ; 
-Nimages = newdim(1) ;
+Nimages = newdim(2) ;
 
 % WHEN dealing with body-only need to handle fucking delta.
 
@@ -293,7 +300,8 @@ try
     [ bodyRes, bodyFrameStartInd, bodyFrameEndInd, ...
         wing1Res, wing1FrameStartInd, wing1FrameEndInd, ...
         wing2Res, wing2FrameStartInd, wing2FrameEndInd, mergedWingsFlag ] = ...
-        hullReconstruction_mk5(params, CM_pos, all_fly_bw, body_only_bw, dlt_matrix, easyWandData,[2,1,3]);
+        hullReconstruction_mk5(params, CM_pos, all_fly_bw, body_only_bw,...
+        dlt_matrix, easyWandData,[2,1,3]);
 catch exception
     msg = strcat('Error reconstructing hulls for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
     msg = strcat(msg, ': ', getReport(exception, 'basic')) ;
@@ -341,7 +349,8 @@ diary(diaryFile) ;
 disp('Doing hull analysis...') 
 try
     data = hullAnalysis_mk3 (bodyRes, wing1Res, wing2Res, params, ...
-        mergedWingsFlag, [], 'test', plotHullFlag, saveHullFigFlag, hullFigPath);
+        mergedWingsFlag, [], 'test', plotHullFlag, saveHullFigFlag, ...
+        hullFigPath);
 catch exception
     msg = strcat('Error analyzing hulls for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
     msg = strcat(msg, ': ', getReport(exception, 'basic')) ;

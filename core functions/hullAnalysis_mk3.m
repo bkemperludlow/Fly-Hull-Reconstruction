@@ -1,8 +1,8 @@
 
 function data = hullAnalysis_mk3 (bodyHull, wing1Hull, wing2Hull, params, ...
     mergedWingsFlag, oneWingEmptyFlags, outputFilename, plotFlag,...
-    saveFigFlag, saveFigPath)
-% data = 
+    saveFigFlag, saveFigPath, verboseFlag)
+% data =
 %                      Nimages: 464                     num of images
 %                          res: [12473860x4 int16]      voxel coordinates of the entire fly + wings
 %                       RESIDX: [12473860x3 logical]    indices showing which voxels in res belong to which body part see 3 indices below:
@@ -25,7 +25,7 @@ function data = hullAnalysis_mk3 (bodyHull, wing1Hull, wing2Hull, params, ...
 %                     errorLog: [464x1 logical]     log of errors (0=fine)
 %     rightChordTopProjections: [464x1 double]      irrelevant
 %      leftChordTopProjections: [464x1 double]      irrelevant
-%                   wingLength: 45                  wing length assumed by the algorithm. 
+%                   wingLength: 45                  wing length assumed by the algorithm.
 %                  diag11Right: [464x1 double]      irrelevant
 %                  diag12Right: [464x1 double]      irrelevant
 %                   diag21Left: [464x1 double]      irrelevant
@@ -46,18 +46,21 @@ see: http://www.mathworks.com/help/toolbox/stats/bq_679x-24.html
 %-------------------------------
 % Inputs
 if ~exist('plotFlag','var') || isempty(plotFlag)
-    plotFlag = false ; 
+    plotFlag = false ;
 end
 if ~exist('saveFigFlag','var')
-    saveFigFlag = false ; 
+    saveFigFlag = false ;
 end
 if ~exist('saveFigPath','var')
-    saveFigFlag = false ; 
-    saveFigPath = [] ; 
+    saveFigFlag = false ;
+    saveFigPath = [] ;
+end
+if ~exist('verboseFlag','var')
+    verboseFlag = false ;
 end
 %-------------------------------
-% params and data 
-wingLength = 35 * params.pixPerCM / 232 ; %(wing1Length + wing2Length)/2 * params.pixPerCM / 232 
+% params and data
+wingLength = 35 * params.pixPerCM / 232 ; %(wing1Length + wing2Length)/2 * params.pixPerCM / 232
 
 noffset = params.startTrackingTime - params.firstTrackableFrame  ;
 
@@ -123,18 +126,20 @@ Nimages           = endTrackingTime - startTrackingTime + 1 ;
 gmReplicates = 12 ;
 kmeansReplicates = 12 ;
 
-h=figure('position',[ 424   447   900   500]) ;
-%az = -10 ;% 265 ;
-
-% calculate axis for dispaly
-axMat = zeros(3,6) ;
-axMat(1,:) = [min(bodyHull(:,2)) max(bodyHull(:,2)) min(bodyHull(:,3)) max(bodyHull(:,3)) min(bodyHull(:,4)) max(bodyHull(:,4))  ] ;
-axMat(2,:) = [min(wing1Hull(:,2)) max(wing1Hull(:,2)) min(wing1Hull(:,3)) max(wing1Hull(:,3)) min(wing1Hull(:,4)) max(wing1Hull(:,4))  ] ;
-axMat(3,:) = [min(wing2Hull(:,2)) max(wing2Hull(:,2)) min(wing2Hull(:,3)) max(wing2Hull(:,3)) min(wing2Hull(:,4)) max(wing2Hull(:,4))  ] ;
-ax        =  [min(axMat(:,1)) max(axMat(:,2)) min(axMat(:,3)) max(axMat(:,4)) min(axMat(:,5)) max(axMat(:,6)) ] ;
-clear axMat ;
-
-colmap = [0 0.8 0 ; 1 0 0 ; 0 0 1 ];
+if plotFlag
+    h=figure('position',[ 424   447   900   500]) ;
+    %az = -10 ;% 265 ;
+    
+    % calculate axis for dispaly
+    axMat = zeros(3,6) ;
+    axMat(1,:) = [min(bodyHull(:,2)) max(bodyHull(:,2)) min(bodyHull(:,3)) max(bodyHull(:,3)) min(bodyHull(:,4)) max(bodyHull(:,4))  ] ;
+    axMat(2,:) = [min(wing1Hull(:,2)) max(wing1Hull(:,2)) min(wing1Hull(:,3)) max(wing1Hull(:,3)) min(wing1Hull(:,4)) max(wing1Hull(:,4))  ] ;
+    axMat(3,:) = [min(wing2Hull(:,2)) max(wing2Hull(:,2)) min(wing2Hull(:,3)) max(wing2Hull(:,3)) min(wing2Hull(:,4)) max(wing2Hull(:,4))  ] ;
+    ax        =  [min(axMat(:,1)) max(axMat(:,2)) min(axMat(:,3)) max(axMat(:,4)) min(axMat(:,5)) max(axMat(:,6)) ] ;
+    clear axMat ;
+    
+    colmap = [0 0.8 0 ; 1 0 0 ; 0 0 1 ];
+end
 %------------------------------------------------------------------------
 % INITIALIZE COORDINATE VARIABLES. KEEP SAME NAMES AS IN ORIGINAL VERSION
 % OF THE ALGORITHM (UNLINE THAT VERSION, HERE WE PRE-ALLOCATE).
@@ -257,10 +262,10 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     ind = ind + 1 ;
     n   = t - params.firstTrackableFrame + 1 ;
     
-    
-    disp(' ');
-    disp(['Start frame ' num2str(ind) '/' num2str(Nimages) ]) ;
-    
+    if verboseFlag
+        disp(' ');
+        disp(['Start frame ' num2str(ind) '/' num2str(Nimages) ]) ;
+    end
     i1body = frameStartIndBodyHull(n) ;
     i2body = frameEndIndBodyHull(n) ;
     bodyCoords = double(bodyHull(i1body:i2body, 2:4)) ; % (x,y,z) in voxel indices, not real coordinates
@@ -281,7 +286,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     % if the two wings hull are the same, use clustering to distinguish
     % both wings
     if (mergedWingsFlag(n) && ~wing1empty && ~wing2empty)
+        if verboseFlag
         disp('Two wings are merged in the XY view. Cluster using kmeans.') ;
+        end
         %keyboard ;
         % the two wing hulls should be the same. take the first.
         
@@ -305,9 +312,11 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             try
                 IDX = kmeans(wing12Coords, 2,'start', seedMat) ;
             catch %#ok<CTCH>
-                disp('kmeans clustering based on previous centroid failed') ;
-                disp('try to find the closest points to the previous centeroids')
-                disp('and use them as the initial guess');
+                if verboseFlag
+                    disp('kmeans clustering based on previous centroid failed') ;
+                    disp('try to find the closest points to the previous centeroids')
+                    disp('and use them as the initial guess');
+                end
                 Q = size(wing12Coords,1) ;
                 dst = myNorm ( wing12Coords - repmat(seedMat(1,:),Q,1)) ;
                 [~, q1] = min(dst) ;
@@ -319,7 +328,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                 catch %#ok<CTCH>
                     % if, for some reason, the seed matrix did not work,
                     % just cluster using the default method
-                    disp('Seed matrix did not work. Use random-search.') ;
+                    if verboseFlag
+                        disp('Seed matrix did not work. Use random-search.') ;
+                    end
                     IDX = kmeans(wing12Coords, 2,'replicates', kmeansReplicates) ;
                 end
                 clear Q dst q1 q2
@@ -476,14 +487,16 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
         % if not, take another one
         if (~ismember(farPoint1, wing1LargestCC,'rows'))
             %keyboard
-            disp('problem 1?') ;
+            if verboseFlag
+                disp('problem 1?') ;
+            end
             tmp = setdiff( wing1Coords(list1,:), wing1LargestCC, 'rows') ;
             wing1LargestCC = findLargestHullCC(tmp) ;
             clear tmp
         end
         
         % check again
-        if (~ismember(farPoint1, wing1LargestCC,'rows'))
+        if (~ismember(farPoint1, wing1LargestCC,'rows')) && verboseFlag
             disp('problem 2?');
             %keyboard ;
         end
@@ -525,7 +538,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
         end
         
         % check again
-        if (~ismember(farPoint2, wing2LargestCC,'rows'))
+        if (~ismember(farPoint2, wing2LargestCC,'rows')) && verboseFlag
             disp('problem 3?');
             %keyboard ;
         end
@@ -572,14 +585,14 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     tempRhoProj = tempRhoProj / norm(tempRhoProj) ; %hat vector
     delInd = 5 ; %number of time steps to look back to define velocity, 5 picked arbitrarily
     if ind > delInd
-        velocityProj = [xs(ind) - xs(ind - delInd), ys(ind) - ys(ind - delInd), 0] ; 
-        velocityProj = velocityProj / norm(velocityProj) ; 
-    else 
+        velocityProj = [xs(ind) - xs(ind - delInd), ys(ind) - ys(ind - delInd), 0] ;
+        velocityProj = velocityProj / norm(velocityProj) ;
+    else
         velocityProj = double([bodyHull(end,2) - bodyHull(1,2), bodyHull(end,3) - bodyHull(1,3), 0]) ;
-        velocityProj = velocityProj / norm(velocityProj) ; 
+        velocityProj = velocityProj / norm(velocityProj) ;
     end
     
-    if (dot(tempRhoProj,velocityProj)<0) %(rollHat(3)<0) && 
+    if (dot(tempRhoProj,velocityProj)<0) %(rollHat(3)<0) &&
         rollHat = -rollHat ;
     end
     %}
@@ -587,7 +600,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     % check sign of body axis
     if ((t <= 0)  && (rollHat(3)<0)) || ((ind <= 1) && (rollHat(3)<0))
         rollHat = -rollHat ;
-    elseif (t > 0) && (ind > 1) 
+    elseif (t > 0) && (ind > 1)
         if (dot(rollHat,rollHats(ind-1,:)') <= 0)
             rollHat = -rollHat ;
         end
@@ -641,7 +654,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             alternativeSwapFlag = true ;
         else % both have the same sign
             % just verify
-            if (val1*val2<0)
+            if (val1*val2<0) && verboseFlag
                 disp('problem 4? - both should have the same sign') ;
                 %keyboard ;
             end
@@ -666,7 +679,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
         %clear v1 v2 val1 val2 dot1 dot2
         
         if (alternativeSwapFlag)
-            disp('===> Swap wings based on vector calculation');
+            if verboseFlag
+                disp('===> Swap wings based on vector calculation');
+            end
             % we need to swap the wings
             rightWingRows = wing2Rows ;
             leftWingRows  = wing1Rows ;
@@ -746,9 +761,11 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             if (d11>d12 && d22>d21)
                 % we need to swap again
                 % swap centoids
-                disp('Warning: Wing distances do not make sense. check this.')
-                disp('also check if other variables need to be swapped');
-                disp('problem 5?') ;
+                if verboseFlag
+                    disp('Warning: Wing distances do not make sense. check this.')
+                    disp('also check if other variables need to be swapped');
+                    disp('problem 5?') ;
+                end
                 %keyboard ;
                 cTemp  = cRight ;
                 cRight = cLeft ;
@@ -963,8 +980,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
         %rightWingVoxels = coords(rightWingRows,:) ;
         
         try
-            disp('Right wing:') ;
-            
+            if verboseFlag
+                disp('Right wing:') ;
+            end
             rightWingVoxels = double(rightWingLargestCC) ;
             Nvox            = size(rightWingVoxels,1) ;
             
@@ -1013,7 +1031,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             [~, Icol] = max(maxRowVec) ;
             Irow = Irow(Icol) ;
             
-            if (distMat(Irow, Icol)~=max(distMat(:)))
+            if (distMat(Irow, Icol)~=max(distMat(:))) && verboseFlag
                 disp('Error with finding max. plz check.') ;
                 disp('problem 6?') ;
                 %keyboard ;
@@ -1059,7 +1077,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             [maxval, indmax] = max(distVec) ; % index into rightWingVoxels
             [minval, indmin] = min(distVec) ; % index into rightWingVoxels
             
-            if (maxval<=0 || minval>=0)
+            if (maxval<=0 || minval>=0) && verboseFlag
                 disp('error in finding alternative chord vector for right wing') ;
                 %keyboard ;
             end
@@ -1093,9 +1111,10 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             
             % decide whether to swap the "main" and "alternative" chord vectors
             % -----------------------------------------------------------------
-            disp(['Before swap: diag11=' num2str(diag11) ' diag12=' num2str(diag12)]) ;
-            disp(['diag11/diag12=' num2str(diag11/diag12) '   diag12/diag11=' num2str(diag12/diag11)]) ;
-            
+            if verboseFlag
+                disp(['Before swap: diag11=' num2str(diag11) ' diag12=' num2str(diag12)]) ;
+                disp(['diag11/diag12=' num2str(diag11/diag12) '   diag12/diag11=' num2str(diag12/diag11)]) ;
+            end
             % if one of the diagonals is siginficantly longer, choose the longer
             % one and do not proceed to the velocity criterion below
             diagSwapFlag     = false ;
@@ -1104,7 +1123,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             if (diag12/diag11 >= 1.3)
                 diagSwapFlag = true ;
                 %contProcess = false ;
-                disp('swap based on large ratio') ;
+                if verboseFlag
+                    disp('swap based on large ratio') ;
+                end
             end
             
             % find wingtip 'velocity' with respect to the body
@@ -1122,8 +1143,10 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                 
                 
                 nrm = norm(vWing) ;
-                disp(['Wing tip velocity = ' num2str(nrm)]) ;
-                disp(['Wing CM  velocity = ' num2str(norm(vWingCM))]) ;
+                if verboseFlag
+                    disp(['Wing tip velocity = ' num2str(nrm)]) ;
+                    disp(['Wing CM  velocity = ' num2str(norm(vWingCM))]) ;
+                end
             else
                 nrm = 0 ;
             end
@@ -1133,12 +1156,16 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                     vWing = vWing / nrm ;
                     dot1 = dot(chord1Hat, vWing) ;
                     dot2 = dot(chord1AltHat, vWing) ;
-                    disp(['dot1=' num2str(dot1) '  dot2=' num2str(dot2)]) ;
+                    if verboseFlag
+                        disp(['dot1=' num2str(dot1) '  dot2=' num2str(dot2)]) ;
+                    end
                     if (dot2>dot1) % swap
                         velocitySwapFlag = true ;
                     end
                     if (dot1<0 && dot2<0 && nrm>=wingTipVelocityThreshold && ~velocitySwapFlag)
-                        disp('--> inverting right chord. not swapping.') ;
+                        if verboseFlag
+                            disp('--> inverting right chord. not swapping.') ;
+                        end
                         chord1Hat = - chord1Hat ;
                     end
                 end
@@ -1147,10 +1174,10 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             swapFlag = (velocitySwapFlag && nrm>=wingTipVelocityThreshold) || ... % believe velocity if |v|>2
                 (diagSwapFlag && nrm<wingTipVelocityThreshold) ;
             
-            if (velocitySwapFlag && nrm>=wingTipVelocityThreshold)
+            if (velocitySwapFlag && nrm>=wingTipVelocityThreshold) && verboseFlag
                 disp('Right wing chord - velocity swap') ;
             end
-            if (diagSwapFlag && nrm<wingTipVelocityThreshold)
+            if (diagSwapFlag && nrm<wingTipVelocityThreshold) && verboseFlag
                 disp('Right wing chord - diag swap') ;
             end
             
@@ -1166,7 +1193,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                 diag12Right(ind) = tmp ;
                 
                 clear tmp ;
-                disp('Swapped right chord with alternative chord') ;
+                if verboseFlag
+                    disp('Swapped right chord with alternative chord') ;
+                end
             end
             
             % ----------
@@ -1182,7 +1211,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             
             
         catch %#ok<CTCH>
-            disp('error occured while trying to find right chord. taking values from the previous frame.')
+            if verboseFlag
+                disp('error occured while trying to find right chord. taking values from the previous frame.')
+            end
             % this ignores the case where the error occures on the first frame...
             vox1IndRight = [] ;
             vox2IndRight = [] ;
@@ -1312,7 +1343,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
         % ----------------------------
         
         try
-            disp('Left wing:') ;
+            if verboseFlag
+                disp('Left wing:') ;
+            end
             %leftWingVoxels = coords(leftWingRows,:) ;
             leftWingVoxels  = double(leftWingLargestCC) ;
             
@@ -1366,9 +1399,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             Irow = Irow(Icol) ;
             
             
-            if (distMat(Irow, Icol)~=max(distMat(:)))
+            if (distMat(Irow, Icol)~=max(distMat(:))) && verboseFlag
                 disp('Error with finding max. plz check.') ;
-                disp('problem 7?') ;
+                %disp('problem 7?') ;
                 %keyboard ;
             end
             
@@ -1418,7 +1451,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             [maxval, indmax] = max(distVec) ; % index into rightWingVoxels
             [minval, indmin] = min(distVec) ; % index into rightWingVoxels
             
-            if (maxval<=0 || minval>=0)
+            if (maxval<=0 || minval>=0) && verboseFlag
                 disp('error in finding alternative chord vector for left wing') ;
                 %keyboard ;
             end
@@ -1452,11 +1485,18 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             
             % decide whether to swap the "main" and "alternative" chord vectors
             % -----------------------------------------------------------------
-            disp(['Before swap: diag21=' num2str(diag21) ' diag22=' num2str(diag22)]) ;
-            disp(['diag21/diag22=' num2str(diag21/diag22) '   diag22/diag21=' num2str(diag22/diag21)]) ;
-            disp(['z coordinates of main chord: ' num2str(min([p1(3), p2(3)])) ', ' num2str(max([ p1(3), p2(3)]))]) ;
-            disp(['z coordinates of alt. chord: ' num2str(min([p3(3), p4(3)])) ', ' num2str(max([ p3(3), p4(3)]))]) ;
-            
+            if verboseFlag
+                disp(['Before swap: diag21=' num2str(diag21) ...
+                    ' diag22=' num2str(diag22)]) ;
+                disp(['diag21/diag22=' num2str(diag21/diag22) ...
+                    '   diag22/diag21=' num2str(diag22/diag21)]) ;
+                disp(['z coordinates of main chord: ' ...
+                    num2str(min([p1(3), p2(3)])) ', ' ...
+                    num2str(max([ p1(3), p2(3)]))]) ;
+                disp(['z coordinates of alt. chord: ' ...
+                    num2str(min([p3(3), p4(3)])) ', ' ...
+                    num2str(max([ p3(3), p4(3)]))]) ;
+            end
             % if one of the diagonals is siginficantly longer, choose the longer
             % one and do not proceed to the velocity criterion below
             diagSwapFlag     = false ;
@@ -1466,14 +1506,18 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             % for the z-swap - decide to swap if alt-chord has larger z range
             
             if ( max([ p3(3), p4(3)]) > max([ p1(3), p2(3)]) && ...
-                 min([ p3(3), p4(3)]) < min([ p1(3), p2(3)]) )
+                    min([ p3(3), p4(3)]) < min([ p1(3), p2(3)]) )
                 zSwapFlag = true ;
-                disp('ignored in the meantime: swap based on z range of chords.') ;
+                if verboseFlag
+                    disp('ignored in the meantime: swap based on z range of chords.') ;
+                end
             end
             
             if (diag22/diag21 >= 1.3)
                 diagSwapFlag = true ;
-                disp('swap based on large ratio') ;
+                if verboseFlag
+                    disp('swap based on large ratio') ;
+                end
             end
             
             % find wingtip 'velocity' with respect to the body
@@ -1490,8 +1534,10 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                 vWing = vWing - span2Hat' * dot(span2Hat, vWing) ;
                 
                 nrm = norm(vWing) ;
-                disp(['Wing tip velocity = ' num2str(nrm)]) ;
-                disp(['Wing CM  velocity = ' num2str(norm(vWingCM))]) ;
+                if verboseFlag
+                    disp(['Wing tip velocity = ' num2str(nrm)]) ;
+                    disp(['Wing CM  velocity = ' num2str(norm(vWingCM))]) ;
+                end
             else
                 nrm = 0 ;
             end
@@ -1501,12 +1547,16 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                     vWing = vWing / nrm ;
                     dot1 = dot(chord2Hat, vWing) ;
                     dot2 = dot(chord2AltHat, vWing) ;
-                    disp(['dot1=' num2str(dot1) '  dot2=' num2str(dot2)]) ;
+                    if verboseFlag
+                        disp(['dot1=' num2str(dot1) '  dot2=' num2str(dot2)]) ;
+                    end
                     if (dot2>dot1) % swap
                         velocitySwapFlag = true ;
                     end
                     if (dot1<0 && dot2<0 && nrm>=wingTipVelocityThreshold && ~velocitySwapFlag)
-                        disp('--> inverting left chord. not swapping.') ;
+                        if verboseFlag
+                            disp('--> inverting left chord. not swapping.') ;
+                        end
                         chord2Hat = - chord2Hat ;
                     end
                 end
@@ -1515,13 +1565,13 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             swapFlag = (velocitySwapFlag && nrm>=wingTipVelocityThreshold) || ... % believe velocity if |v|>2
                 (diagSwapFlag && nrm<wingTipVelocityThreshold) ;
             
-            if (velocitySwapFlag && nrm>=wingTipVelocityThreshold)
+            if (velocitySwapFlag && nrm>=wingTipVelocityThreshold) && verboseFlag
                 disp('Left wing chord - velocity swap') ;
             end
-            if (diagSwapFlag && nrm<wingTipVelocityThreshold)
+            if (diagSwapFlag && nrm<wingTipVelocityThreshold) && verboseFlag
                 disp('Left wing chord - diag swap') ;
             end
-
+            
             
             %swapFlag = zSwapFlag || (diagSwapFlag && nrm<wingTipVelocityThreshold) ;
             
@@ -1535,7 +1585,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
                 diag21Left(ind) = diag22Left(ind) ;
                 diag22Left(ind) = tmp ;
                 clear tmp ;
-                disp('Swapped left chord with alternative chord') ;
+                if verboseFlag
+                    disp('Swapped left chord with alternative chord') ;
+                end
             end
             
             
@@ -1548,7 +1600,9 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
             eta2 = atan2( abs(dot(chord2Hat,theta2Hat)), abs(dot(chord2Hat,phi2Hat)));
             
         catch %#ok<CTCH>
-            disp('error occured while trying to find left chord. taking values from the previous frame.')
+            if verboseFlag
+                disp('error occured while trying to find left chord. taking values from the previous frame.')
+            end
             % this ignores the case where the error occures on the first frame...
             vox1IndLeft = [] ;
             vox2IndLeft = [] ;
@@ -1839,15 +1893,15 @@ axis equal ; box on ; grid on ;
     % display progress and time
     currTime = toc ;
     totalCalcTime = totalCalcTime + toc ;
-    
-    disp(['Frame ' num2str(ind) '/' num2str(Nimages) ' took ' ...
-        num2str(round(currTime*100)/100) 's. Time so far ' ...
-        num2str(round(totalCalcTime*10)/10) 's' ]) ;
-    
-    %if (ind>=1) ; keyboard ; end ;
-    %disp('paused...') ;
-    disp(' ') ;
-    
+    if verboseFlag
+        disp(['Frame ' num2str(ind) '/' num2str(Nimages) ' took ' ...
+            num2str(round(currTime*100)/100) 's. Time so far ' ...
+            num2str(round(totalCalcTime*10)/10) 's' ]) ;
+        
+        %if (ind>=1) ; keyboard ; end ;
+        %disp('paused...') ;
+        disp(' ') ;
+    end
     %if (mergedWingsFlag(n))
     % keyboard ;
     %end
@@ -1941,7 +1995,9 @@ data = orderData_mk2 (res, RESIDX, stroke, 0, ...
     -1, -1, -1, -1, ...
     params, errorLog);
 
-disp('Recalulating body center-of-mass and body-axis') ;
+if verboseFlag
+    disp('Recalulating body center-of-mass and body-axis') ;
+end
 [axisHats, midPoints] = findBodyAxis_mk2 (data, false);
 data.bodyCM_old = data.bodyCM ;
 data.AHat_old   = data.AHat ;
@@ -2006,12 +2062,13 @@ for j = 1:Nimages
     
 end
 
-
-disp('done re-calc') ;
+if verboseFlag
+    disp('done re-calc') ;
+end
 
 %disp('it might me needed to run findBodyAxis TWICE') ;
 %keyboard ;
-% 
+%
 % figure ;
 % hold on ;
 % plot3(xs,ys,zs,'g.-','markerfacecolor','g') ;

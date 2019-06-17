@@ -48,7 +48,7 @@ function [all_fly_bw, body_only_bw, all_fly_thresholds, xcm_pass2, ycm_pass2, al
 % entire-fly-no-legs images to find the center-of-mass positions
 % accurately.
 
-if ~exist('twoflies')
+if ~exist('twoflies','var')
     twoflies =0;
 end
 
@@ -65,7 +65,7 @@ warning('off','MATLAB:gui:latexsup:UnableToInterpretTeXString')
 
 DEBUG_FLAG  = false ; % for pass 0
 DEBUG_FLAG2 = false ; % for pass 1 false ;
-DEBUG_FLAG3 = false; % false % for pass 2;
+DEBUG_FLAG3 = false ; % false % for pass 2;
 
 FIT_SCOPE = 100 ;
 DEGREE = 2  ; % polynomial degree used for fit
@@ -85,8 +85,10 @@ end
 N = tout - tin + 1 ; % number of images
 
 % set up output variables
-all_fly_bw   = init4D([N, 1, metaData.height, metaData.width]) ; % second dimension is 1 since this is only for 1 camera. combine later.
-body_only_bw = init4D([N, 1, metaData.height, metaData.width]) ; % second dimension is 1 since this is only for 1 camera. combine later.
+% all_fly_bw   = init4D([N, 1, metaData.height, metaData.width]) ; % second dimension is 1 since this is only for 1 camera. combine later.
+% body_only_bw = init4D([N, 1, metaData.height, metaData.width]) ; % second dimension is 1 since this is only for 1 camera. combine later.
+all_fly_bw   = init4D([1, N, metaData.height, metaData.width]) ; % second dimension is 1 since this is only for 1 camera. combine later.
+body_only_bw = init4D([1, N, metaData.height, metaData.width]) ; % second dimension is 1 since this is only for 1 camera. combine later.
 all_fly_thresholds = zeros(N,1) ;
 
 allAxlim = zeros(N,4) ;
@@ -192,11 +194,7 @@ for t=tin:tout
     %if t == 151
     %    disp('blerg') ;
     %end
-    try 
     bw3(CC.PixelIdxList{idx(1)}) = true ;
-    catch
-        keyboard
-    end
     bw3 = imfill(bw3, 'holes') ;
     
     % ----
@@ -259,8 +257,8 @@ end
 %% REMOVE LEGS
 % ------------
 
-%[legsRemovedChopLog, res_t, startLines_t, endLines_t] = trackLegs_mk2(all_fly_bw, allAxlim, 1) ;
-%all_fly_bw = legsRemovedChopLog ; % if everything works, we should now work with the chopped legs pics
+[legsRemovedChopLog, res_t, startLines_t, endLines_t] = trackLegs_mk2(all_fly_bw, allAxlim, 1) ;
+all_fly_bw = legsRemovedChopLog ; % if everything works, we should now work with the chopped legs pics
 
 %[legsRemovedChopLog, ~, ~, ~] = trackLegs_mk2(body_only_bw, allAxlim, 1) ; % XXX
 %body_only_bw = legsRemovedChopLog ; % if everything works, we should now work with the chopped legs pics
@@ -276,7 +274,7 @@ ycm_pass1 = zeros(N,1) + NaN ;
 
 
 if (~DEBUG_FLAG2)
-    hbar = waitbar(0,['binrayThreshold: finding body CM for ' cinFilename(end-9:end) ' (pass 1)...']) ;
+    hbar = waitbar(0,['binaryThreshold: finding body CM for ' cinFilename(end-9:end) ' (pass 1)...']) ;
 end
 
 cc  = 0 ; % used only for hbar
@@ -314,7 +312,6 @@ for t = tin+DELTA : tout-DELTA
     % check if there are "enough" pixels that appear in all frames
     % (t-DELTA ... t+DELTA). if not, reduce the threshold of (2*DELTA+1)
     % such that "enough" pixels are included.
-    
     cont = true;
     thresh = 2*DELTA + 1 ;
     while (cont)
@@ -335,13 +332,13 @@ for t = tin+DELTA : tout-DELTA
                 svec(j) = length(CC.PixelIdxList{j}) ;
             end
             [~, idx] = sort(svec,'descend') ;
-            
-            comb2_bw = false(size(comb2_bw)) ; % rest comb2_bw
-            comb2_bw(CC.PixelIdxList{idx(1)}) = true ; % with the largest CC
         else
             idx = 1;
         end
         
+        comb2_bw = false(size(comb2_bw)) ; % rest comb2_bw
+        comb2_bw(CC.PixelIdxList{idx(1)}) = true ; % with the largest CC
+
         % if largest CC is still not large enough
         if (sum(comb2_bw(:)) < 400)
             thresh = thresh - 1 ;
@@ -350,7 +347,6 @@ for t = tin+DELTA : tout-DELTA
             cont = false ;
         end
     end
-    
     %    comb2_bw = (comb2 == 2*DELTA+1) ;
     %     CC  = bwconncomp(comb2_bw);
     %     if (length(CC.PixelIdxList)~=1)
@@ -405,7 +401,6 @@ for t = tin+DELTA : tout-DELTA
     else
         waitbar(cc/Ndd, hbar) ;
     end
-    
 end
 
 
@@ -433,7 +428,7 @@ ycm_pass2 = xcm_pass2 ;
 for t = tin+DELTA : tout-DELTA
     cc = cc + 1 ;
     if (loud)
-        disp(['binrayThreshold: finding body CM for ' movstr ' (pass 2), frame ' num2str(cc) ' / ' num2str(Ndd)]) ;
+        disp(['binaryThreshold: finding body CM for ' movstr ' (pass 2), frame ' num2str(cc) ' / ' num2str(Ndd)]) ;
     end
     t1 = max([t-FIT_SCOPE ; tin+DELTA]) ;
     t2 = min([t+FIT_SCOPE ; tout-DELTA]) ;

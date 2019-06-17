@@ -130,8 +130,8 @@ voxelSize           = params.voxelSize ;
 
 mergedWingsFlag     = false(Nframes, 1) ;
 % Centers=zeros(endTrackingTime-startTrackingTime+1,3);
-for indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
-    disp(indd) ;
+parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
+    %disp(indd) ;
     t = indd + startTrackingTime - 1 ;
     
     %frameNum = t - startTrackingTime + 1 ;

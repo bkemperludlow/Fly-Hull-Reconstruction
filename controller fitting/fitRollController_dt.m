@@ -4,17 +4,17 @@
 %rootPath = 'G:\Janelia Flies\kir2.1 flies\Analysis\' ;
 %rootPath = 'H:\Fly Data\Janelia Flies\kir round 2\19_31102016\Analysis\' ;
 %rootPath = 'G:\Janelia Flies\kir2.1 flies round 2\Analysis_additional_expr\' ;
-rootPath = 'H:\Fly Data\Conference Poster Examples\' ; 
+rootPath = 'D:\Fly Data\VNC Motor Lines\58_23032019\' ; 
 
-ExprNum = 7 ;
-MovNum = 3 ;
+ExprNum = 58 ;
+MovNum = 7 ;
 pertType = -2 ;
 flyType = 1 ;
 plotFlag1 = false ;
 plotFlag2 = true ;
 debugFlag1 = true ;
 debugFlag2 = true ;
-saveFlag = true ; 
+saveFlag = false ; 
 
 smoothFlag = true ; 
 
@@ -32,7 +32,7 @@ controller_fit_struct = struct() ;
 %% get data
 
 %full data structure
-data = loadPertDataStruct(rootPath, ExprNum, MovNum, pertType) ;
+[data, dataPath] = loadPertDataStruct(rootPath, ExprNum, MovNum, pertType) ;
 data.manualCorrRangeMS = [-10 , 30] ;
 
 %data to fit controller model to
@@ -158,6 +158,7 @@ controller_fit_struct.phiAmpDiff = phiAmpDiff ;
 controller_fit_struct.pertType = pertType ;
 
 if saveFlag
-    save controller_fit_struct_LM controller_fit_struct
+    save(fullfile(dataPath, 'controller_fit_struct_LM.mat'),...
+        'controller_fit_struct')
 end
 

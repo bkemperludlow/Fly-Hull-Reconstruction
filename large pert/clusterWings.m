@@ -17,9 +17,11 @@ function [wingVox, wingRowsOut, idx, centroids, badClusterFlag] = ...
 if ~exist('debugFlag','var')
     debugFlag = false ;
 end
-numReplicates = 20 ;
+numReplicates = 30 ;
 downSampleStep = 2 ; % 1 would mean no down sampling, 2 reduces by 50%, ...
 k_list = [1:3] ; % how many clusters to test
+options = statset('MaxIter',1000,'Display','off');
+N_vox_min = 400 ; 
 %numTestClusts = 4 ;
 %clustCriterion = 'DaviesBouldin' ; % 'CalinskiHarabasz', 'DaviesBouldin', 'gap', 'silhouette'
 
@@ -62,13 +64,30 @@ wingVoxAlt = double([coords(wingRowsAlt,1), coords(wingRowsAlt,2), ...
 bodyCM = data.bodyCM(frameNum, :) ;
 
 %--------------------------------------------------------------------------
+%% filter out very small voxel clusters
+% get connected components and their size
+[~, ~, CC, ~, vox_coords_idx] = findLargestHullCC (wingVox);
+CC_vox_size = cellfun(@(y) length(y), CC.PixelIdxList) ; 
+% loop through and find voxel coordinates that correspond to either noise
+% or putatative wing. NB: we're doing it this way because we need to
+% preserve the size of the wingVox array to fit it back in the original
+% data structure
+large_enough_ind = find(CC_vox_size > N_vox_min) ; 
+cleaned_idx = false(size(wingVox,1),1) ; 
+for p = 1:length(large_enough_ind)
+   ind_curr = large_enough_ind(p) ; 
+   cleaned_idx(vox_coords_idx{ind_curr}) = true ; 
+end
+wingVox_cleaned = wingVox(cleaned_idx,:) ; 
+schmutz_idx = ~cleaned_idx ; % to be used later for removing junk 
+%--------------------------------------------------------------------------
 %% show initial voxel configuration
 if debugFlag
     h_debug = figure ;
     hold on
-    plot3(wingVox(1:downSampleStep:end,1), ...
-        wingVox(1:downSampleStep:end,2), ...
-        wingVox(1:downSampleStep:end,3), '.', ...
+    plot3(wingVox_cleaned(1:downSampleStep:end,1), ...
+        wingVox_cleaned(1:downSampleStep:end,2), ...
+        wingVox_cleaned(1:downSampleStep:end,3), '.', ...
         'Color',plt_color)
     plot3(wingVoxAlt(1:downSampleStep:end,1), ...
         wingVoxAlt(1:downSampleStep:end,2), ...
@@ -80,7 +99,7 @@ if debugFlag
     xlabel('X')
     ylabel('Y')
     zlabel('Z')
-    
+      
 end
 %--------------------------------------------------------------------------
 %% first test to see if clustering is appropriate
@@ -89,25 +108,27 @@ end
 % use a faster gmm cluster evaluation to check if we're likely to need 3
 % clusters
 eva_gmm = evalclusters(wingVox,'gmdistribution','DaviesBouldin',...
-    'KList',k_list_init) ; 
+    'KList',k_list) ;
 if eva_gmm.OptimalK > 2
-    k_list = 1:3 ; 
+    k_list = 1:3 ;
 else
-    k_list = 1:2 ; 
+    k_list = 1:2 ;
 end
 % based on gmm evaluation, try different kmeans clustering
 eva = evalclusters(wingVox(1:downSampleStep:end,:),'kmeans','gap',...
     'KList',k_list) ;
-%disp(k_list(end)) 
+%disp(k_list(end))
 %toc
 %}
-eva = evalclusters(wingVox(1:downSampleStep:end,:),'kmeans','CalinskiHarabasz',...
-    'KList',k_list) ;
+% eva = evalclusters(wingVox(1:downSampleStep:end,:),'kmeans','CalinskiHarabasz',...
+%     'KList',k_list) ;
+eva = evalclusters(wingVox_cleaned(1:downSampleStep:end,:),'gmdistribution',...
+    'DaviesBouldin','KList',k_list) ;
 if eva.OptimalK < 2
     badClusterFlag = true ;
     idx = [] ;
     centroids = [] ;
-    wingRowsOut = [] ; 
+    wingRowsOut = [] ;
     return
 else
     badClusterFlag = false ;
@@ -117,9 +138,14 @@ end
 % NB: now we're potentially clustering with more than two components, so
 % need to find the most "wing like" if there are >2 clusters
 numClusters = eva.OptimalK ;
-fprintf('Optimal cluster number: %d \n',numClusters) 
-idx = kmeans(wingVox,numClusters,'Replicates',numReplicates) ;
+fprintf('Optimal cluster number: %d \n',numClusters)
 
+gmfit = fitgmdist(wingVox_cleaned,numClusters,'CovarianceType','full',...
+    'SharedCovariance',false,'Replicates',numReplicates,...
+    'Options',options) ;
+idx = cluster(gmfit, wingVox) ;
+
+%% plot results?
 if debugFlag
     plot_mrkr_cell = {'gx', 'cx', 'yx', 'kx' } ;
     set(0, 'CurrentFigure',h_debug)
@@ -127,15 +153,16 @@ if debugFlag
         plot3(wingVox(idx==q,1),wingVox(idx==q,2),wingVox(idx==q,3),...
             plot_mrkr_cell{q})
     end
+    %disp(['GMM fit log likelihood: ' num2str(nLogL)])
 end
 
 %--------------------------------------------------------------------------
 %% check to see if this gives rise to reasonable wings (and calc centroids)
-wingClust_cell = cell(numClusters,1) ; 
-wingLargestCC_cell = cell(numClusters,1) ; 
-centroids_all = nan(numClusters,3) ; 
-farPoints_all = nan(numClusters,3) ; 
-farPointDist_all = nan(numClusters,1) ; 
+wingClust_cell = cell(numClusters,1) ;
+wingLargestCC_cell = cell(numClusters,1) ;
+centroids_all = nan(numClusters,3) ;
+farPoints_all = nan(numClusters,3) ;
+farPointDist_all = nan(numClusters,1) ;
 
 for j = 1:numClusters
     wingClust = wingVox(idx==j,:) ;
@@ -148,24 +175,27 @@ for j = 1:numClusters
     wingLargestCC_cell{j} = wingLargestCC ;
     centroids_all(j,:) = newCentroid ;
     farPoints_all(j,:) = farPoint ;
-    farPointDist_all(j) = farPointDist ; 
+    farPointDist_all(j) = farPointDist ;
 end
 
 % re-shuffle the cluster indices to make sure we only output 2 clusters
-[~, sort_ind] = sort(farPointDist_all,'descend') ; 
-good_cluster_inds = sort_ind(1:2) ; 
-%idx((idx ~= good_cluster_inds(1)) & (idx ~= good_cluster_inds(2))) = 0 ; 
-idx_temp = zeros(size(idx)) ; 
-idx_temp(idx == good_cluster_inds(1)) = 1 ; 
-idx_temp(idx == good_cluster_inds(2)) = 2 ; 
-idx = idx_temp ; 
+[~, sort_ind] = sort(farPointDist_all,'descend') ;
+good_cluster_inds = sort_ind(1:2) ;
+%idx((idx ~= good_cluster_inds(1)) & (idx ~= good_cluster_inds(2))) = 0 ;
+idx_temp = zeros(size(idx)) ;
+idx_temp(idx == good_cluster_inds(1)) = 1 ;
+idx_temp(idx == good_cluster_inds(2)) = 2 ;
+idx_temp(schmutz_idx) = 0 ; 
+idx = idx_temp ;
 
-centroids = centroids_all(good_cluster_inds, :) ; 
+centroids = centroids_all(good_cluster_inds, :) ;
 
 % need to deal with voxels and the issues of nested logical indexing :(
-wingRowsOut = false(size(wingRows,1),2) ; 
-wingRowsOut((wingRows ==1),1) = (idx == 1) ; 
-wingRowsOut((wingRows ==1),2) = (idx == 2) ; 
+wingRowsOut = false(size(wingRows,1),2) ;
+wingRowsOut((wingRows ==1),1) = (idx == 1) ;
+wingRowsOut((wingRows ==1),2) = (idx == 2) ;
+
+
 
 end
 
@@ -174,8 +204,8 @@ end
 % SE = strel('sphere',1); %Structuring element used for image morphologies
 % target_size = [120,120,120]; %target fixed im size
 % buffer = [60,60,60]; %padding when converting from voxels to im to make all voxel coord>0 %[50 50 50] ;
-% 
-% wingVox_meanSub = wingVox-repmat(mean(wingVox),size(wingVox,1),1) ; 
+%
+% wingVox_meanSub = wingVox-repmat(mean(wingVox),size(wingVox,1),1) ;
 % wing_im = voxel_to_3d_array(wingVox_meanSub,buffer,target_size);
 % [opened_im,~] = open_image3D(wing_im,SE) ;
 % %eroded_wing_vox =  im2voxel(eroded_im);

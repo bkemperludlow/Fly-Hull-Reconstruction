@@ -85,7 +85,7 @@ clear out1 out2 out3
 batchtime = toc ;
 
 disp(['Done finding background images for movie ' movieNum]) ;
-disp(' ') ;
+disp(batchtime) ;
 
 if isnan(tin) 
     tin = min([max(allTin), 1]) ; % things get funky when the start is after 0
@@ -184,8 +184,8 @@ delete(jobXY) ;
 delete(jobXZ) ;
 delete(jobYZ) ;
 
-toc
-
+binThreshTime = toc ; 
+disp(binThreshTime)
 %  -----------------------------------------------------------------------
 %% COMBINE all_fly_bw_** INTO ONE STRUCTURE
 %   (use frames DELTA+1 until Nimages-DELTA)
@@ -193,11 +193,14 @@ toc
 
 dim = all_fly_bw_xy.dim ;
 newdim = dim ;
-newdim(1) = dim(1) - 2*DELTA ;
-newdim(2) = 3 ; % three cams
+% newdim(1) = dim(1) - 2*DELTA ;
+% newdim(2) = 3 ; % three cams
+newdim(2) = dim(2) - 2*DELTA ;
+newdim(1) = 3 ; % three cams
 
 all_fly_bw = init4D(newdim) ; 
-Nimages = newdim(1) ;
+% Nimages = newdim(1) ;
+Nimages = newdim(2) ;
 disp('Combining...')
 for k=1:Nimages
     % combine XY
@@ -224,10 +227,14 @@ end
 
 dim = body_only_bw_xy.dim ;
 newdim = dim ;
-newdim(1) = dim(1) - 2*DELTA ;
-newdim(2) = 3 ; % three cams
+% newdim(1) = dim(1) - 2*DELTA ;
+% newdim(2) = 3 ; % three cams
+% body_only_bw = init4D(newdim) ; 
+% Nimages = newdim(1) ;
+newdim(2) = dim(2) - 2*DELTA ;
+newdim(1) = 3 ; % three cams
 body_only_bw = init4D(newdim) ; 
-Nimages = newdim(1) ;
+Nimages = newdim(2) ;
 
 % WHEN dealing with body-only need to handle fucking delta.
 
@@ -363,7 +370,7 @@ thull = toc ;
 delete(gcp) ;
 
 disp(['done calculating Hulls for movie ' movieNum]) ;
-
+disp(toc)
 %---------------------------------------------
 % save these results in case of error later?
 if savePointFlag
@@ -371,7 +378,7 @@ if savePointFlag
    save(hullRecon_savename, 'bodyRes', 'bodyFrameStartInd', ...
        'bodyFrameEndInd', 'wing1Res', 'wing1FrameStartInd',...
        'wing1FrameEndInd', 'wing2Res', 'wing2FrameStartInd',...
-       'wing2FrameEndInd')
+       'wing2FrameEndInd','mergedWingsFlag','params')
 end
 %--------------------------------------------------------------------------
 %% ANALYZE VOXEL RECONSTRUCTION
@@ -389,8 +396,8 @@ diary(diaryFile) ;
 disp('Doing hull analysis...') 
 try
     data = hullAnalysis_mk3 (bodyRes, wing1Res, wing2Res, params, ...
-        mergedWingsFlag, [], 'test', plotHullFlag,...
-        plotHullFlag, saveHullFigFlag, hullFigPath);
+        mergedWingsFlag, [], 'test', plotHullFlag, saveHullFigFlag,...
+        hullFigPath);
 catch exception
     msg = strcat('Error analyzing hulls for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
     msg = strcat(msg, ': ', getReport(exception, 'basic')) ;
@@ -405,7 +412,7 @@ end
 disp(['Done with hull analysis for movie ' movieNum])
 t2 = clock ;
 dt12 = t2 - t1 ;
-
+disp(dt12)
 diary off ;
 
 %--------------------------------------------------------------------------

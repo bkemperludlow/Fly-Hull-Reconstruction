@@ -1,5 +1,13 @@
+%--------------------------------------------------------------------------
+% generates a structure containing relevant file paths for a given
+% experiment. 
+%
+% pathToWatch is the root folder for the experiment, e.g. :
+%       'D:\Box Sync Old\VNC Motor Lines\11_25032018\'
+%--------------------------------------------------------------------------
 function pathStruct = generatePathStruct(pathToWatch)
-
+% -------------------------------------------------------------------------
+%% add the various paths to the structure
 pathStruct = struct ; 
 pathStruct.root = pathToWatch ; 
 pathStruct.save = [pathToWatch 'Analysis'] ; 
@@ -15,21 +23,16 @@ pathStruct.probNoPert = [pathToWatch 'Analysis\Probably No Perturbation\'] ;
 pathStruct.undeterminedPert = [pathToWatch 'Analysis\Undetermined Perturbation\'] ;
 pathStruct.other = [pathToWatch 'Analysis\Other\'] ; 
 pathStruct.unsorted = [pathToWatch 'Analysis\Unsorted\'] ; 
-pathStruct.mp4 = [pathToWatch 'mp4'] ; 
+pathStruct.mp4 = [pathToWatch 'mp4'] ;
 
-mkdir(pathStruct.root) ; 
-mkdir(pathStruct.save) ; 
-mkdir(pathStruct.possibleFT) ; 
-mkdir(pathStruct.pitchUp ) ; 
-mkdir(pathStruct.pitchDown) ; 
-mkdir(pathStruct.rollRight) ; 
-mkdir(pathStruct.rollLeft) ; 
-mkdir(pathStruct.noPert) ;
-mkdir(pathStruct.probNoPert) ;
-mkdir(pathStruct.undeterminedPert) ;
-mkdir(pathStruct.unsorted) ;
-mkdir(pathStruct.other) ;
-mkdir(pathStruct.mp4) ;
-
+%% create the directory folders if they don't already exist
+pathStructFields = {'root', 'save', 'possibleFT', 'pitchUp', 'pitchDown',...
+    'rollRight', 'rollLeft', 'noPert', 'probNoPert','undeterminedPert',...
+    'unsorted','other','mp4'} ; 
+for i = 1:length(pathStructFields)
+    if ~exist(pathStruct.(pathStructFields{i}), 'dir')
+        mkdir(pathStruct.(pathStructFields{i}))
+    end
+end
 
 end

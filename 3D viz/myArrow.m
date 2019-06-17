@@ -1,5 +1,9 @@
 function grp = myArrow(ax, parent, len, tipDiameter, tipHeight, rodDiam, ...
-    basePoint, direction, rgb, resolution, lineStyleStr) %#ok<DEFNU>
+    basePoint, direction, rgb, resolution, lineStyleStr, arrowAlpha) %#ok<DEFNU>
+
+if ~exist('arrowAlpha','var')
+    arrowAlpha = 1.0 ; 
+end
 
 axes(ax) ;
 
@@ -17,7 +21,7 @@ C(:,:,3) = rgb(3) ;
 hr = surf(X, Y, Z) ;
 set(hr,'lineStyle',lineStyleStr) ;
 set(hr,'CData',C) ;
-
+set(hr,'FaceAlpha',arrowAlpha,'EdgeAlpha',arrowAlpha)
 
 % plot the cone
 t = linspace(tipDiameter/2,0,resolution) ;
@@ -30,6 +34,7 @@ C(:,:,3) = rgb(3) ;
 hc = surf(X, Y, Z) ;
 set(hc,'lineStyle',lineStyleStr) ;
 set(hc,'CData',C) ;
+set(hc,'FaceAlpha',arrowAlpha,'EdgeAlpha',arrowAlpha)
 
 % plot two rounded disks
 % top disk
@@ -42,6 +47,7 @@ C(:,:,1) = rgb(1) ;
 C(:,:,2) = rgb(2) ;
 C(:,:,3) = rgb(3) ;
 htop = patch(X,Y,Z,C,'lineStyle',lineStyleStr) ;
+set(htop,'FaceAlpha',arrowAlpha,'EdgeAlpha',arrowAlpha)
 
 % bottom disk
 t = linspace(0,2*pi, resolution) ;
@@ -53,6 +59,7 @@ C(:,:,1) = rgb(1) ;
 C(:,:,2) = rgb(2) ;
 C(:,:,3) = rgb(3) ;
 hbot = patch(X,Y,Z,C,'lineStyle',lineStyleStr) ;
+set(hbot,'FaceAlpha',arrowAlpha,'EdgeAlpha',arrowAlpha)
 
 grp = hgtransform('Parent',parent);
 set([hc hr htop hbot], 'Parent',grp) ;

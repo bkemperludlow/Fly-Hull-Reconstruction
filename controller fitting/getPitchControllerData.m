@@ -13,7 +13,7 @@ if isfield(data,'manualCorrRangeMS')
     manualCorrRangeMS_end = min([data.manualCorrRangeMS(2) 40]) ;
     manualCorrRangeMS = [manualCorrRangeMS_start, manualCorrRangeMS_end ] ;
 else
-    manualCorrRangeMS = [-10 40] ;
+    manualCorrRangeMS = [-10 110] ;
 end
 manualCorrRange = manualCorrRangeMS / 1000 ; 
 

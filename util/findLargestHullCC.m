@@ -1,10 +1,14 @@
-function [largestCC, otherCC, CC, idx] = findLargestHullCC (hull, conn, sizevec)
+function [largestCC, otherCC, CC, idx, coords_idx] = ...
+    findLargestHullCC (hull, conn, sizevec)
 % finds the largest connected component in the given 3D hull (x,y,z)
 % and returns it in largestCC.
 % otherCC contains all the other voxels that were not included in largestCC
 % CC contains the connected components analysis returned by bwconncomp
 % idx is the indices of the connected components in CC sorted by descending
 % size
+% coords_idx gives the index relating the connected component pixel index to
+% the original array of coordinates (cell array, so each entry corresponds
+% to one CC)
 %
 % sizevec is the size of the 3D volume. Dafault value is [512 512 512] 
 % conn is the connectivity used for finding connected components in 3D
@@ -50,6 +54,7 @@ end
 CC = bwconncomp(VOL,conn);
 
 Ncc = length(CC.PixelIdxList) ;
+coords_idx = cell(Ncc,1) ; 
 if (Ncc>1)
     svec = zeros(Ncc,1) ; % vector containing the size of all connected components
     for j=1:Ncc
@@ -61,16 +66,19 @@ if (Ncc>1)
     largestCC = double([idx1 idx2 idx3 ]) ;
     %largestCC = largestCC-repmat(abs(double([xmin+1, ymin+1, zmin+1])),size(largestCC,1),1) ; % xxx
     largestCC = largestCC + repmat(double([xmin-1, ymin-1, zmin-1]),size(largestCC,1),1) ; 
+    coords_idx{idx(1)} = ismember(hull, largestCC, 'rows') ; 
     for j=2:Ncc
         [idx1, idx2, idx3] = ind2sub(size(VOL), CC.PixelIdxList{idx(j)}) ;
         tmp = int16([idx1, idx2, idx3]) + int16(repmat([xmin-1, ymin-1, zmin-1],size(idx1,1),1)); %tmp = int16([idx1, idx2, idx3]) ;
         otherCC = [ otherCC ; tmp ] ;  %#ok<AGROW>
+        coords_idx{idx(j)} = ismember(hull, tmp, 'rows') ; 
     end
     
 else
     % if there is only one connected component
     largestCC = hull ;
     idx = 1 ;
+    coords_idx{1} = true(size(largestCC,1),1) ;   
 end
 
 

@@ -170,10 +170,12 @@ velThresh = nanmean([rightWingCMVel ; leftWingCMVel]) + ...
 
 % these are the frames where the wing size is either conspicuously small or
 % large
-clust_R_idx = ((N_vox_R_zScore - N_vox_L_zScore) > 2.5) & ...
-    (N_vox_R_zScore > 0) ;
-clust_L_idx = ((N_vox_R_zScore - N_vox_L_zScore) < -2.5) & ...
-    (N_vox_L_zScore > 0) ;
+% clust_R_idx = ((N_vox_R_zScore - N_vox_L_zScore) > 2.5) & ...
+%     (N_vox_R_zScore > 0) ;
+% clust_L_idx = ((N_vox_R_zScore - N_vox_L_zScore) < -2.5) & ...
+%     (N_vox_L_zScore > 0) ;
+clust_R_idx = (N_vox_R_zScore > 2) & (N_vox_L_zScore < -2) ; 
+clust_L_idx = (N_vox_L_zScore > 2) & (N_vox_R_zScore < -2) ; 
 clust_idx = clust_R_idx | clust_L_idx ;
 
 % these frames lack a span, chord, or cm estimate for one of the wings
@@ -656,8 +658,9 @@ disp('Done updating data structure')
 
 %% calculate wing/body angles since we have the coordinate transforms
 % first save body frame angles calculated during correction
-anglesBodyFrameFilt = filterAnglesBodyFrame(anglesBodyFrame) ; 
-data_new.anglesBodyFrameLP = anglesBodyFrameFilt ; 
+anglesBodyFrameFilt = filterAnglesBodyFrame(anglesBodyFrame, 1000*t) ; 
+data_new.anglesBodyFrameLP = anglesBodyFrame ; 
+data_new.anglesBodyFrameFiltLP = anglesBodyFrameFilt ; 
 
 % then calculate angles using standard approach
 [anglesLabFrame, anglesBodyFrame, ~, ~, ~, ~, ~, ~, ~] = ...
@@ -864,7 +867,7 @@ function anglesBodyFrameFilt = ...
 %--------------------------------------------
 % inputs and params
 if ~exist('plotFlag','var')
-    plotFlag = false ; 
+    plotFlag = true ; 
 end
 
 cutOffLow = -170 ; 
@@ -877,8 +880,8 @@ defineConstantsScript ;
 
 %--------------------------------------------
 % read in stroke angle
-phiR = -1*anglesBodyFrame(:,PHIR) * (180/pi)^2 ;
-phiL = anglesBodyFrame(:,PHIL) * (180/pi)^2 ; 
+phiR = -1*anglesBodyFrame(:,PHIR) ;
+phiL = anglesBodyFrame(:,PHIL) ; 
 
 % based on our method of calculation in this script, stroke angles are in 
 % the range [-180, 180]. so stroke angles below zero could either be 1)

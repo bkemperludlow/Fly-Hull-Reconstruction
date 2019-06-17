@@ -18,7 +18,7 @@ yaw_filt_lvl = 100 ; % Hz, for low-pass filter
 
 %% body roll
 roll_filt_lvl = 200 ; % Hz, for low-pass filter
-roll_est_err = 0.25 ; % deg, for spline fit
+roll_est_err = 0.025 ; % 0.25 ; % deg, for spline fit
 
 %% body pitch
 pitch_filt_lvl = 100 ; % Hz, for low-pass filter
@@ -45,7 +45,7 @@ eta_sgolay_f = 11 ; % window size for savitzky golay filt
 
 %% general wing
 wing_hampel_k = 7 ; % hampel filter window size 
-wing_hampel_nsigma = 2 ; % numbr of std deviations for hampel filter
+wing_hampel_nsigma = 2.5 ; % numbr of std deviations for hampel filter
 wing_point_filt_lvl = 2000 ; % Hz, low pass filter level
 %--------------------------------------------------------------------------
 %% put values in params struct

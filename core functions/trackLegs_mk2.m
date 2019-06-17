@@ -3,7 +3,7 @@ function [legsRemovedChopLog, res_t, startLines_t, endLines_t] = trackLegs_mk2(c
 
 % handle only a single view.
 
-Nframes     = chopLog.dim(1) ;
+Nframes     = chopLog.dim(2) ;
 imageHeight = chopLog.dim(3) ;
 imageWidth  = chopLog.dim(4) ;
 allPoints   = zeros(Nframes*20,3) ; % over allocate
@@ -113,7 +113,7 @@ for f=1:Nframes
 end
 
 
-if (1)% show tracked points on movie
+if (0)% show tracked points on movie
     figure(2)
     for f=1:Nframes
         bw = getImage4D(chopLog, cam, f);
