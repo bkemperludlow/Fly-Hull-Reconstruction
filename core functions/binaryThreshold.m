@@ -1,5 +1,7 @@
-function [all_fly_bw, body_only_bw, all_fly_thresholds, xcm_pass2, ycm_pass2, allAxlim, DELTA] = ...
-    binaryThreshold(bg, cinFilename, tin, tout,twoflies,xcm_guess, ycm_guess)
+function [all_fly_bw, body_only_bw, all_fly_thresholds, xcm_pass2, ...
+     ycm_pass2, allAxlim, DELTA, with_legs_bw] = ...
+    binaryThreshold(bg, cinFilename, tin, tout,twoflies,xcm_guess, ...
+     ycm_guess, removeLegsFlag, stopWingsFlag)
 % input parameters:
 %    *  bg - the background image for this movie (UINT8)
 %    *  cinFileName - a string of the full cine file name
@@ -48,27 +50,44 @@ function [all_fly_bw, body_only_bw, all_fly_thresholds, xcm_pass2, ycm_pass2, al
 % entire-fly-no-legs images to find the center-of-mass positions
 % accurately.
 
-if ~exist('twoflies','var')
+if ~exist('twoflies','var') || isempty(twoflies)
     twoflies =0;
+end
+if ~exist('removeLegsFlag','var') || isempty(removeLegsFlag)
+    removeLegsFlag = true ; 
+end
+if ~exist('stopWingsFlag','var') || isempty(stopWingsFlag)
+    stopWingsFlag = false ; 
 end
 
 loud = false ; % if true prints the progess to the screen too.
 
-ind = find(cinFilename=='\',1,'last') ;
-if (isempty(ind))
-    ind = 1;
-end
-movstr = cinFilename(ind+1:end) ;
-Nimages = tout - tin + 1 ;
+% get camera name 
+%----------------------------------
+% get camera name for current file
+[~, fn_curr, ~] = fileparts(cinFilename) ; 
+fn_curr = strrep(fn_curr, '_', '\_') ; 
 
 warning('off','MATLAB:gui:latexsup:UnableToInterpretTeXString')
 
 DEBUG_FLAG  = false ; % for pass 0
 DEBUG_FLAG2 = false ; % for pass 1 false ;
 DEBUG_FLAG3 = false ; % false % for pass 2;
+DEBUG_FLAG4 = false ; % false % for wing stop fix;
 
 FIT_SCOPE = 100 ;
 DEGREE = 2  ; % polynomial degree used for fit
+
+% --------------------------------------------------------
+% params only used for "stopWingsFlag" case
+SE = strel('disk', 4) ; % structural element used to open image to get body orientation
+line_len_sub = 8 ; % when we create line strels, they'll have length = bodyLength - line_len_sub
+orient_diff_thresh_low = 4.0 ; % max difference between body orientation in adjacent frames
+orient_diff_thresh_high = 170.0 ; % max difference between body orientation in adjacent frames (to account for angle discontinuities)
+thick_factor = 2 ; % amount to thicken image by
+CC_size_thresh = 250 ; % used in pass 1 to find candidate connected components
+centroid_dist_thresh = 2.0 ; % used in pass 1 to find candidate connected components
+% --------------------------------------------------------
 
 metaData = getCinMetaData(cinFilename) ;
 
@@ -99,10 +118,11 @@ maskWindow = 60 ;
 %xcm = round(xcm) ; ycm=round(ycm) ;
 
 if (~DEBUG_FLAG)
-    hbar = waitbar(0,['binaryThreshold: finding whole-body bw images for ' cinFilename(end-9:end) ]) ;
+    hbar = waitbar(0,['binaryThreshold: finding whole-body bw images for ' ...
+        fn_curr ]) ;
 end
 
-
+% ------------------------------------------------------------------------
 %% FIND THE ENTIRE FLY BW IMAGE IN EACH FRAME
 % this part should be a sepapated function, after which the legs should be
 % removed in a second function. the remaining part of this code (pass1,2)
@@ -132,7 +152,8 @@ for t=tin:tout
     c=c+1 ;
     
     if (loud)
-        disp(['binaryThreshold: finding whole-body bw images for ' movstr ', frame ' num2str(c) ' / ' num2str(Nimages)]) ;
+        disp(['binaryThreshold: finding whole-body bw images for ' ...
+            fn_curr ', frame ' num2str(c) ' / ' num2str(Nimages)]) ;
     end
     %im1 = ReadCineFileImage(cinFilename, t, false);
     im1 = myReadCinImage(cindata, t) ;
@@ -163,7 +184,7 @@ for t=tin:tout
     level = graythresh(im2) * 0.6 ; 
     all_fly_thresholds(c) = level ;
     
-    bw2   = im2bw(im2, level) ;
+    bw2   = imbinarize(im2, level) ;
     
     ind_temp = t - metaData.firstImage ; 
     xcm_curr = xcm_guess(ind_temp) ; 
@@ -254,12 +275,13 @@ else
 end
 
 
-%% REMOVE LEGS
+%% REMOVE LEGS (if not opening body for stopWings)
 % ------------
-
-[legsRemovedChopLog, res_t, startLines_t, endLines_t] = trackLegs_mk2(all_fly_bw, allAxlim, 1) ;
-all_fly_bw = legsRemovedChopLog ; % if everything works, we should now work with the chopped legs pics
-
+if (removeLegsFlag) && (~stopWingsFlag)
+    % if everything works, we should now work with the chopped legs pics
+    with_legs_bw = all_fly_bw ; 
+    [all_fly_bw, ~, ~, ~] = trackLegs_mk2(all_fly_bw, allAxlim, 1) ; 
+end
 %[legsRemovedChopLog, ~, ~, ~] = trackLegs_mk2(body_only_bw, allAxlim, 1) ; % XXX
 %body_only_bw = legsRemovedChopLog ; % if everything works, we should now work with the chopped legs pics
 
@@ -271,10 +293,11 @@ DELTA = 18 ;
 %ycm_pass1 = zeros(N-2*DELTA,1) ;
 xcm_pass1 = zeros(N,1) + NaN ; % use N and not (N-2*DELTA) to be compatible with all_fly_bw and all_fly_thresholds
 ycm_pass1 = zeros(N,1) + NaN ;
-
+%N_bodyPix = nan(N,1) ; 
 
 if (~DEBUG_FLAG2)
-    hbar = waitbar(0,['binaryThreshold: finding body CM for ' cinFilename(end-9:end) ' (pass 1)...']) ;
+    hbar = waitbar(0,['binaryThreshold: finding body CM for ' fn_curr ...
+        ' (pass 1)...']) ;
 end
 
 cc  = 0 ; % used only for hbar
@@ -284,7 +307,8 @@ for t = tin+DELTA : tout-DELTA
     cc=cc+1 ; % for the hbar only
     
     if (loud)
-        disp(['binaryThreshold: finding body CM for ' movstr ' (pass 1), frame ' num2str(cc) ' / ' num2str(Ndd)]) ;
+        disp(['binaryThreshold: finding body CM for ' fn_curr ...
+            ' (pass 1), frame ' num2str(cc) ' / ' num2str(Ndd)]) ;
     end
     combbw  = true(size(bw3)) ; %not actually used here
     comb2 = zeros(size(bw3),'uint8') ;
@@ -347,36 +371,58 @@ for t = tin+DELTA : tout-DELTA
             cont = false ;
         end
     end
-    %    comb2_bw = (comb2 == 2*DELTA+1) ;
-    %     CC  = bwconncomp(comb2_bw);
-    %     if (length(CC.PixelIdxList)~=1)
-    %         % take only largest CC
-    %         Ncc = length(CC.PixelIdxList) ;
-    %         svec = zeros(Ncc,1) ; % vector containing the size of each connected components
-    %         for j=1:Ncc
-    %             svec(j) = length(CC.PixelIdxList{j}) ;
-    %         end
-    %         [~, idx] = sort(svec,'descend') ;
-    %
-    %         comb2_bw = false(size(comb2_bw)) ;
-    %         try
-    %             comb2_bw(CC.PixelIdxList{idx(1)}) = true ;
-    %         catch
-    %             disp('bhaaa!');
-    %             keyboard ;
-    %         end
-    %     else
-    %         idx = 1;
-    %     end
     
-    
+    % ----------------------------
+    % get frame number 
     c2 = t - tin - DELTA + 1 ;
     c = t - tin + 1 ;
     
+    % ----------------------------------------
+    % try to deal with wing stopping issue
+    
+    if (stopWingsFlag) && (cc > (DELTA + 1)) && (t > 0) 
+        % because we don't have body-only images to align yet, for the
+        % first pass we'll just try to kill off any wing contributions with
+        % a watershed segmentation
+        comb2_bw = imopen(comb2_bw, SE) ; 
+        
+        D = bwdist(~comb2_bw) ;
+        D = -D;
+        D(~comb2_bw) = Inf;
+        L = watershed(D);
+        L(~comb2_bw) = 0;
+        % figure ; imshow(label2rgb(L))
+        
+        if (numel(unique(L(:))) > 2)
+            L_CC = bwconncomp(L) ;
+            cc_sizes = cellfun(@(y) length(y), L_CC.PixelIdxList)' ;
+            L_rprops = regionprops(L_CC, 'Centroid') ;
+            cc_centroids = vertcat(L_rprops.Centroid) ;
+            
+            c = t - tin + 1 ;
+            centroid_dist = myNorm(cc_centroids - ...
+                [xcm_pass1(c-1), ycm_pass1(c-1)]) ;
+            
+            sizeCheck = (cc_sizes >= CC_size_thresh) ;
+            centroidCheck = (centroid_dist < centroid_dist_thresh) ;
+            
+            if (sum(sizeCheck & centroidCheck) >= 1)
+                comb3_bw = false(size(comb2_bw)) ;
+                comb3_bw(L_CC.PixelIdxList{sizeCheck & ...
+                    centroidCheck}) = true ;
+                % figure ; imshowpair(comb2_bw, comb3_bw)
+                comb2_bw = comb3_bw ;
+            end
+        end
+    end
+    
+    % ----------------------------------------
+    % store first-pass values of body cm
     [idx1, idx2]  = ind2sub(size(comb2_bw), CC.PixelIdxList{idx(1)}) ;
     
     xcm_pass1(c) = mean(double(idx2)) ; % previously used c2 instead of c.
     ycm_pass1(c) = mean(double(idx1)) ;
+    %N_bodyPix(c) = length(idx1) ; 
     
     if (DEBUG_FLAG2)
         
@@ -415,10 +461,22 @@ end
 %% FIND BODY C.M. PASS-2 - shift the images to overlap, then do the same trick as in pass-1
 % (see code in segmentWingSingleFrame.m)
 
-if (~DEBUG_FLAG3)
-    hbar = waitbar(0,['binrayThreshold: finding body CM for ' cinFilename(end-9:end) ' (pass 2)...']) ;
+if (~DEBUG_FLAG3) && (~DEBUG_FLAG4)
+    hbar = waitbar(0,['binaryThreshold: finding body CM for ' fn_curr ...
+        ' (pass 2)...']) ;
 end
 
+if (DEBUG_FLAG4) && (stopWingsFlag)
+    h_fig = figure ;
+    ax = gca ;
+    hold on
+    h_imshow = imshow(false(metaData.height, metaData.width), [],...
+        'Parent', ax) ;
+    h_ell = plot(ax, NaN, NaN, 'r-','LineWidth',1.0) ;
+    h_dir = plot(ax, NaN, NaN, 'g-','LineWidth',1.0) ; 
+    t_grid = linspace(0,2*pi,50);
+    %h_dir_cap = plot(NaN, NaN, 'ko','MarkerFaceColor', 'g') ;
+end
 cc=0 ; % used only for hbar
 
 xcm_pass2 = zeros(N,1) + NaN  ;
@@ -428,7 +486,8 @@ ycm_pass2 = xcm_pass2 ;
 for t = tin+DELTA : tout-DELTA
     cc = cc + 1 ;
     if (loud)
-        disp(['binaryThreshold: finding body CM for ' movstr ' (pass 2), frame ' num2str(cc) ' / ' num2str(Ndd)]) ;
+        disp(['binaryThreshold: finding body CM for ' fn_curr ...
+            ' (pass 2), frame ' num2str(cc) ' / ' num2str(Ndd)]) ;
     end
     t1 = max([t-FIT_SCOPE ; tin+DELTA]) ;
     t2 = min([t+FIT_SCOPE ; tout-DELTA]) ;
@@ -486,6 +545,16 @@ for t = tin+DELTA : tout-DELTA
     
     comb2_bw = (comb2 == 2*DELTA+1) ;
     
+    % ------------------------------------------------------------------
+    % if the wings are stopping mid flight, do some processing to remove
+    % them from body pixels
+    if (stopWingsFlag) && (cc > 1)
+        comb2_bw_open = imopen(comb2_bw, se_line) ;
+        comb2_bw = comb2_bw & bwmorph(comb2_bw_open,'thicken',thick_factor) ;
+    end
+    
+    % ----------------------------------------------
+    % get largest connected component
     CC  = bwconncomp(comb2_bw);
     if (length(CC.PixelIdxList)~=1)
         % take only largest CC
@@ -506,6 +575,49 @@ for t = tin+DELTA : tout-DELTA
     end
     
     c = t - tin + 1 ;
+    
+    % --------------------------------------------------------------------
+    % get orientation of body to update strel (only in stopWingsFlag case)
+    % get orientation of body 
+    if stopWingsFlag
+        bw_open = imopen(comb2_bw,SE) ;
+        % in case opening kills off image
+        if (sum(bw_open(:)) < 1)
+            strel_radius_temp = 4 ; 
+            while sum(sum(bw_open(:)) < 1)
+                strel_radius_temp = strel_radius_temp - 1; 
+                se_temp = strel('disk',strel_radius_temp) ; 
+                bw_open = imopen(comb2_bw,se_temp) ;
+            end
+        end
+        % get region properties
+        rprops = regionprops(bw_open, 'Orientation','Area','MajorAxisLength',...
+            'MinorAxisLength', 'Centroid') ;
+        [~, max_ind] = max([rprops.Area]) ;
+        
+        % update our estimate of the fly's current orientation
+        if (cc > 1)
+            orientation_diff = abs(rprops(max_ind).Orientation - ...
+                orientation) ;
+            if (orientation_diff < orient_diff_thresh_low) || ...
+                    (orientation_diff > orient_diff_thresh_high)
+                orientation = rprops(max_ind).Orientation ;
+                line_len = round(rprops(max_ind).MajorAxisLength) - ...
+                    line_len_sub ;
+            else
+                line_len = 14 ;
+            end
+        else
+            orientation = rprops(max_ind).Orientation ;
+            line_len = round(rprops(max_ind).MajorAxisLength) - ...
+                line_len_sub  ;
+        end
+        
+        % make line structuring element
+        se_line = strel('line', line_len, orientation ) ;
+        
+    end
+    % ----------------------------------------------------------------
     % SAVE comb2_bw (this is what the functin outputs)
     % store binary images in the sparse 4d structure (see setImage4D)
     i1=1 ; i2=c ;
@@ -539,19 +651,55 @@ for t = tin+DELTA : tout-DELTA
         plot(xcm_pass2(d1:c), ycm_pass2(d1:c),'ko-','markerfacecolor','w','markersize',3) ;
         pause(.01) ;
         %keyboard  ;
-    else
+    end
+    if (DEBUG_FLAG4) && (stopWingsFlag)
+        % update image
+        set(h_imshow, 'CData', comb2_bw)
+        
+        % plot ellipse
+        a = rprops(max_ind).MajorAxisLength/2;
+        b = rprops(max_ind).MinorAxisLength/2;
+        Xc = rprops(max_ind).Centroid(1);
+        Yc = rprops(max_ind).Centroid(2);
+        phi = deg2rad(-rprops(max_ind).Orientation);
+        phi2 = deg2rad(-orientation) ; 
+        % ellipse from region props 
+        x = Xc + a*cos(t_grid)*cos(phi) - b*sin(t_grid)*sin(phi);
+        y = Yc + a*cos(t_grid)*sin(phi) + b*sin(t_grid)*cos(phi);
+        % ellipse using current orientation estimate
+        x2 = Xc + a*cos(t_grid)*cos(phi2) - b*sin(t_grid)*sin(phi2);
+        y2 = Yc + a*cos(t_grid)*sin(phi2) + b*sin(t_grid)*cos(phi2);
+        
+        % update ellipses
+        set(h_ell, 'XData', x, 'YData', y) ; 
+        set(h_dir, 'XData', x2, 'YData', y2) ; 
+        title(ax, t)
+        pause(0.05)
+    end
+    if ~(DEBUG_FLAG3) && ~(DEBUG_FLAG4)
         waitbar(cc/Ndd, hbar) ;
     end
     
     
 end
 
-if (~DEBUG_FLAG3)
+if (~DEBUG_FLAG3) && ~(DEBUG_FLAG4)
     close(hbar)
 end
 
-myCloseCinFile(cindata) ;
+% ------------------------------------------------------------------------
+%% REMOVE LEGS (if the case of stopWings
+if (removeLegsFlag) && (stopWingsFlag)
+   with_legs_bw = all_fly_bw ;  
+   [all_fly_bw, ~, ~, ~] = trackLegs_mk2(all_fly_bw, allAxlim, 1) ; 
+end
 
+if ~exist('with_legs_bw','var') && (nargout > 7)
+    with_legs_bw = [] ; 
+end
+% -----------------------------------
+%% Close cine and exit
+myCloseCinFile(cindata) ;
 
 warning('on','MATLAB:gui:latexsup:UnableToInterpretTeXString')
 

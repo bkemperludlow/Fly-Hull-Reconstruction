@@ -1,32 +1,62 @@
 
 function [flyGrp, bodyGrp, rightWingGrp, leftWingGrp, dL, rightWingTip, leftWingTip ] = ....
-    draw3Dfly(ax, scale, resolution, pinType, thetab0) %#ok<INUSD>
+    draw3Dfly_v3(ax, scale, resolution, pinType, thetab0, gridFlag, colorScheme) %#ok<INUSD>
+
+if ~exist('gridFlag','var') || isempty(gridFlag)
+    gridFlag = true ; 
+end
+if ~exist('colorScheme','var') || isempty(colorScheme)
+    colorScheme = 'normal' ; 
+end
+
+bodyGridResolution = 20 ;
+gridLineWidth = 0.5 ; % 0.5 ; 
 
 headRadius    = 1 ;
 thoraxRadius  = 1.2 ;
 %abdomenRadius = 1.2 ;
 LAMBDA = 1.4 ;
-alphaVal = 1 ;
+alphaVal = .7 ;
 
 
 wingSpan      = thoraxRadius * 1.75  ; % 2.2
 wingChord     = wingSpan /2   ;
 wingThickness = (1/6) ; 
 
-pinColor = [0.9 0.9 1]*.7 ;
-eyeColor = [255 85 52] / 255 ; % [0.9 0.0 0.0] ;
-thoraxColor = [194 97 20] / 255 ;
-headColor   = [217 185 136]/255 ;
-abdomenColor = mean([thoraxColor ; headColor]) ;
-rightWingColor = [1 0 0 ] ; %[194 97 20]/255*.6  ;
-leftWingColor  = [0.5 0.5 1 ] ; %[194 97 20]/255*.6  ; 
-
+switch colorScheme
+    case 'normal'
+        pinColor = [.5 .5 1] ;
+        eyeColor = [255 85 52] / 255 ; % [0.9 0.0 0.0] ;
+        thoraxColor = [194 97 20] / 255 ;
+        headColor   = [217 185 136]/255 ;
+        abdomenColor = mean([thoraxColor ; headColor]) ;
+        rightWingColor = [194 97 20]/255*.6 ; %[1 0 0 ]
+        leftWingColor  = [194 97 20]/255*.6  ; % [0.5 0.5 1 ]
+    case 'metal'
+        pinColor = 0.5*[1 1 1] ;
+        eyeColor = 0.5*[1 1 1] ; % [0.9 0.0 0.0] ;
+        thoraxColor = 0.6*[1 1 1] ;
+        headColor   = 0.7*[1 1 1]  ;
+        abdomenColor = 0.7*[1 1 1] ;
+        rightWingColor = 0.4*[1 1 1] ; %[1 0 0 ]
+        leftWingColor  = 0.4*[1 1 1] ;
+    case 'sim'
+        pinColor = 0.7*[1 1 1] ;
+        eyeColor = [0, 1, 0] ; % [0.9 0.0 0.0] ;
+        thoraxColor = [0, 1, 0] ;
+        headColor   = [0, 1, 0]  ;
+        abdomenColor = [0, 1, 0] ;
+        rightWingColor = [1, 0, 0] ; %[1 0 0 ]
+        leftWingColor  = [0, 0, 1] ;
+    otherwise
+        fprintf('Invalid color scheme selection: %s \n', colorScheme)
+end
 pinLength = thoraxRadius * 2 ;
 pinRadius = thoraxRadius * 0.1 ;
 
 veinRadius = thoraxRadius * 0.15 ;
 
-lineStyleStr = '-' ; % 'none' %'-'
+lineStyleStr = 'none' ;
 pinLineStyleStr =  'none' ;%'-' ; %
 wingLineStyle =  'none' ;%'-' ; %
 eyeLineStyle  = 'none' ;
@@ -47,6 +77,10 @@ leftEyeGrp  = hgtransform('Parent',headGrp);
 [Xsph, Ysph, Zsph] = sphere(resolution) ;
 [XsphLR, YsphLR, ZsphLR] = sphere(round(resolution/2)) ; % LR=Low Resolution
 
+[XsphCoarse, YsphCoarse, ZsphCoarse] = sphere(bodyGridResolution) ;
+[XsphLRCoarse, YsphLRCoarse, ZsphLRCoarse] = sphere(round(bodyGridResolution/2)) ; % LR=Low Resolution
+
+myeps = 1.00 ;
 
 % head
 head = surf(XsphLR*headRadius*scale, YsphLR*headRadius*scale, ZsphLR*headRadius*1*scale) ;
@@ -57,8 +91,48 @@ C(:,:,3) = headColor(3) ;
 set(head,'CData',C) ;
 set(head,'linestyle',lineStyleStr) ;
 
+if gridFlag
+    % make head grid
+    gridDivision = 10 ;
+    th = linspace(0,2*pi,200) ;
+    xc = cos(th) * scale ;
+    yc = xc*0 ;
+    zc = sin(th) * scale ;
+    hold on ;
+    
+    for k=0:9
+        hcir = plot3(xc,yc,zc,'k-','linewidth',gridLineWidth) ;
+        RC   = makehgtform('zrotate',k*2*pi/gridDivision) ;
+        tmpGroup = hgtransform('Parent',headGrp);
+        set(hcir,'parent',tmpGroup) ;
+        set(tmpGroup,'Matrix',RC) ;
+    end
+    
+    dphi = pi / ( gridDivision-1) ;
+    phi = (1:(gridDivision-2)) * dphi - pi/2;
+    for k=1:length(phi)
+        zc = sin(phi(k))* scale + zeros(size(th));
+        rad = cos(phi(k))* scale ;
+        yc = rad * cos(th) ;
+        xc = rad * sin(th) ;
+        hcir = plot3(xc,yc,zc,'k-','linewidth',gridLineWidth) ;
+        tmpGroup = hgtransform('Parent',headGrp);
+        set(hcir,'parent',tmpGroup) ;
+    end
+    axis equal
+end
+
+%{
+headGrid = mesh(XsphLR*headRadius*scale*myeps, YsphLR*headRadius*scale*myeps, ZsphLR*headRadius*1*scale*myeps) ;
+set(headGrid,'facecolor','none') ;
+C = zeros([size(XsphLR) 3]) ;
+set(headGrid,'CData',C) ;
+set(headGrid,'linestyle','-') ;
+%}
+
+
 % eyes
-% ----
+%----
 rightEye = surf(XsphLR*headRadius*scale*0.6, ...
     YsphLR*headRadius*scale*0.6, ... % * 0.85
     ZsphLR*headRadius*2/3*scale*0.6 + headRadius*scale*0.8,'linestyle',lineStyleStr) ;
@@ -86,6 +160,7 @@ S1    = makehgtform('scale',[1 1 2/3 ]) ;
 R1    = makehgtform('yrotate',-pi*2/3) ;
 T1    = makehgtform('translate',[1.5 0 2/3]*scale) ;
 set(head, 'Parent',headGrp) ;
+%set(headGrid, 'Parent',headGrp) ;
 set(headGrp, 'Matrix',T1*R1*S1) ;
 
 % thorax
@@ -96,6 +171,34 @@ C(:,:,2) = thoraxColor(2) ;
 C(:,:,3) = thoraxColor(3) ;
 set(thorax,'CData',C) ;
 set(thorax, 'Parent',thoraxGrp) ;
+
+% make thorax grid
+if gridFlag
+    gridDivision = 20 ;
+    th = linspace(0,2*pi,200) ;
+    xc = cos(th) * scale * thoraxRadius;
+    yc = xc*0 ;
+    zc = sin(th) * scale * thoraxRadius;
+    hold on ;
+    for k=0:9
+        hcir = plot3(xc,yc,zc,'k-','linewidth',gridLineWidth) ;
+        RC   = makehgtform('zrotate',k*2*pi/gridDivision) ;
+        tmpGroup = hgtransform('Parent',thoraxGrp);
+        set(hcir,'parent',tmpGroup) ;
+        set(tmpGroup,'Matrix',RC) ;
+    end
+    dphi = pi / ( gridDivision-1) ;
+    phi = (1:(gridDivision-2)) * dphi - pi/2;
+    for k=1:length(phi)
+        zc = sin(phi(k))* scale* thoraxRadius + zeros(size(th));
+        rad = cos(phi(k))* scale* thoraxRadius ;
+        yc = rad * cos(th) ;
+        xc = rad * sin(th) ;
+        hcir = plot3(xc,yc,zc,'k-','linewidth',gridLineWidth) ;
+        tmpGroup = hgtransform('Parent',thoraxGrp);
+        set(hcir,'parent',tmpGroup) ;
+    end
+end
 
 % abdomen
 abdomen = surf(Xsph*headRadius*scale, Ysph*headRadius*scale, Zsph*headRadius*7/3*scale,'linestyle',lineStyleStr) ;
@@ -108,6 +211,36 @@ R1 = makehgtform('yrotate',-75*pi/180) ;
 T1 = makehgtform('translate',[-headRadius*4/3*scale 0 0]) ;
 set(abdomen, 'Parent',abdomenGrp) ;
 set(abdomenGrp,'Matrix',T1*R1) ;
+
+% make abdomen grid
+if gridFlag 
+    gridDivision = 20 ;
+    th = linspace(0,2*pi,200) ;
+    xc = cos(th) * headRadius*scale ;
+    yc = xc*0 ;
+    zc = sin(th) * headRadius*7/3*scale;
+    hold on ;
+    for k=0:9
+        hcir = plot3(xc,yc,zc,'k-','linewidth',gridLineWidth) ;
+        RC   = makehgtform('zrotate',k*2*pi/gridDivision) ;
+        tmpGroup = hgtransform('Parent',abdomenGrp);
+        set(hcir,'parent',tmpGroup) ;
+        set(tmpGroup,'Matrix',RC) ;
+    end
+    dphi = pi / ( gridDivision-1) ;
+    phi = (1:(gridDivision-2)) * dphi - pi/2;
+    for k=1:length(phi)
+        zc = sin(phi(k))* headRadius*7/3*scale + zeros(size(th));
+        rad = cos(phi(k))* headRadius*scale ;
+        yc = rad * cos(th) ;
+        xc = rad * sin(th) ;
+        hcir = plot3(xc,yc,zc,'k-','linewidth',gridLineWidth) ;
+        tmpGroup = hgtransform('Parent',abdomenGrp);
+        set(hcir,'parent',tmpGroup) ;
+    end
+end
+
+
 
 % now rotate the whole fly to look real
 R1 = makehgtform('xrotate',pi) ;
@@ -173,11 +306,11 @@ switch (pinType)
         C(:,:,1) = pinColor(1) ;
         C(:,:,2) = pinColor(2) ;
         C(:,:,3) = pinColor(3) ;
-        hdisk1 = patch(X,Y,Z,C,'linestyle',pinLineStyleStr) ;
+        hdisk1 = patch(X,Y,Z,pinColor,'linestyle',pinLineStyleStr) ;
         
         % disk2
         X = X - scale*pinLength ;
-        hdisk2 = patch(X,Y,Z,C,'linestyle',pinLineStyleStr) ;
+        hdisk2 = patch(X,Y,Z,pinColor,'linestyle',pinLineStyleStr) ;
         
         pinGrp = hgtransform ;
         set([pin hdisk1 hdisk2],'Parent',pinGrp) ;
@@ -225,17 +358,12 @@ C = zeros([size(X) 3]) ;
 C(:,:,1) = rightWingColor(1) ;
 C(:,:,2) = rightWingColor(2) ;
 C(:,:,3) = rightWingColor(3) ;
-hdisk3 = patch(X,Y,Z,C,'linestyle',wingLineStyle) ;
+hdisk3 = patch(X,Y,Z,rightWingColor,'linestyle',wingLineStyle) ;
 
 Y = Y + scale * wingSpan * LAMBDA ;
-hdisk4 = patch(X,Y,Z,C,'linestyle',wingLineStyle) ;
+hdisk4 = patch(X,Y,Z,rightWingColor,'linestyle',wingLineStyle) ;
 
-alpha(rightWing,alphaVal)
-alpha(rightVein,alphaVal)
-alpha(hdisk3,alphaVal)
-alpha(hdisk4,alphaVal)
-
-
+alpha([rightWing rightVein hdisk3 hdisk4],alphaVal) ;
 set([rightWing rightVein hdisk3 hdisk4], 'Parent',rightWingGrp) ;
 
 %R1 = makehgtform('yrotate',thetab0) ;
@@ -275,16 +403,12 @@ C = zeros([size(X) 3]) ;
 C(:,:,1) = leftWingColor(1) ;
 C(:,:,2) = leftWingColor(2) ;
 C(:,:,3) = leftWingColor(3) ;
-hdisk5 = patch(X,Y,Z,C,'linestyle',wingLineStyle) ;
+hdisk5 = patch(X,Y,Z,leftWingColor,'linestyle',wingLineStyle) ;
 
 Y = Y + scale * wingSpan * LAMBDA;
-hdisk6 = patch(X,Y,Z,C,'linestyle',wingLineStyle) ;
+hdisk6 = patch(X,Y,Z,leftWingColor,'linestyle',wingLineStyle) ;
 
-alpha(leftWing,alphaVal)
-alpha(leftVein,alphaVal)
-alpha(hdisk5,alphaVal)
-alpha(hdisk6,alphaVal)
-
+alpha([leftWing leftVein hdisk5 hdisk6],alphaVal) ;
 set([leftWing leftVein hdisk5 hdisk6], 'Parent',leftWingGrp) ;
 
 end

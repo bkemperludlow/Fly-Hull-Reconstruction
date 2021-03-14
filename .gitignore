@@ -2,6 +2,11 @@
 old/
 */old/
 */under construction/
+*/under_construction/
+*/exclude*/
+*/_old/
+*/temp*/
 
 # also don't track the following file types:
 *.asv
+*.png

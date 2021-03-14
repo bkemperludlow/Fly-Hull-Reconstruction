@@ -1,4 +1,4 @@
-function [f, g, H] = controller_residuals(x,phiFront,flipTimes, sp_pitch)
+function [f, g, H] = controller_residuals(x,phiFront,flipTimes, c_pitch)
 %---------------------------------------------------------
 %Defines the fit residuals for a PI controller model
 %
@@ -28,14 +28,15 @@ if length(phiFront) ~= length(flipTimes)
     return ;
 end
 
-bodyPitch = fnval(sp_pitch, flipTimes - deltaT) ;
+bodyPitch = c_pitch(flipTimes - deltaT) ;
 %theta_0 = fnval(sp_pitch, flipTimes - deltaT_2) ;
-theta_0 = mean(fnval(sp_pitch, flipTimes(flipTimes < 0))) ;
-pitchVelocity = fnval( fnder(sp_pitch,1), flipTimes - deltaT) ;
+%theta_0 = mean(c_pitch(flipTimes(flipTimes < 0))) ;
+theta_0 = c_pitch(0) ;
+pitchVelocity = differentiate(c_pitch, flipTimes - deltaT) ;
 
 controllerPrediction = K_i*(bodyPitch - theta_0) + K_p*pitchVelocity + K ;
 %controllerPrediction = K_i*bodyPitch  + K_p*pitchVelocity + K ;
-diff = phiFront - controllerPrediction ;
+diff = phiFront - controllerPrediction' ;
 
 f = sum(diff.^2) ;
 

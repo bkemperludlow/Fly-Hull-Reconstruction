@@ -3,7 +3,7 @@
 %==========================================================================
 
 % this is the root folder that we want to have our expt in
-rootPath = 'D:\Box Sync Old\VNC Motor Lines\' ; 
+rootPath = 'D:\Box Sync Old\Opto Silencing\' ; 
 readmePath = 'D:\' ;
 readmeFilename_orig = 'README-template.txt' ; 
 readmeFilename_new = 'README.txt' ; 
@@ -11,7 +11,12 @@ readmeFilename_new = 'README.txt' ;
 % get index for expt folders in root
 exprDir = dir(rootPath) ; 
 exprDir = exprDir(3:end) ; 
-exprNums = arrayfun(@(x) str2double(x.name(1:2)),exprDir) ; 
+exprFolderExpression = '(?<exprNum>\d+)_(?<datenum>\d+)' ;
+exprStrs = arrayfun(@(x) regexp(x.name, exprFolderExpression ,'names'), ...
+    exprDir,'UniformOutput',0) ; 
+empty_idx = cellfun(@(y) isempty(y),exprStrs) ; 
+exprStrs = exprStrs(~empty_idx) ; 
+exprNums = cellfun(@(y) str2double(y.exprNum), exprStrs) ; 
 
 % define new folder
 exprNumNew = max(exprNums) + 1 ; 
@@ -31,3 +36,6 @@ mkdir(fullfile(newExprPath,'calibration')) ;
 copyfile(fullfile(readmePath,readmeFilename_orig),newExprPath) ;
 movefile(fullfile(newExprPath,readmeFilename_orig),...
     fullfile(newExprPath, readmeFilename_new)) ;
+
+% move to new directory
+cd(newExprPath)

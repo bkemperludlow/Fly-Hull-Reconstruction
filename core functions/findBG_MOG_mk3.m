@@ -15,8 +15,8 @@ LoadPhantomLibraries;
 
 warning('off','MATLAB:gui:latexsup:UnableToInterpretTeXString')
 
-DEBUG_FLAG = false;
-
+DEBUG_FLAG = false ;
+mergeFlag = true ;
 %------------------------------
 % params
 
@@ -51,9 +51,13 @@ tracks_struct = struct() ;
 t0_ind = find(tvec == 0) ; 
 
 %----------------------------------
+% get name for current movie file
+[~, fn_curr, ~] = fileparts(cinFilename) ; 
+fn_curr = strrep(fn_curr, '_', '\_') ; 
 
+% initialize waitbar
 if (~DEBUG_FLAG)
-    hbar = waitbar(0,['findBG: Processing images in ' cinFilename(end-9:end)]) ;
+    hbar = waitbar(0,['findBG: Processing images in ' fn_curr]) ;
 end
 
 %--------------------------------------------------------------------------
@@ -121,7 +125,7 @@ for j = 1:length(tracks_struct_nonempty)
        trackID_curr = confirmedTracks(k).TrackID ;
        state_curr = confirmedTracks(k).State ;
        area_curr = confirmedTracks(k).ObjectAttributes{1}{2} ; 
-       frame_num_curr = confirmedTracks(k).Time ; 
+       frame_num_curr = confirmedTracks(k).UpdateTime ; 
        
        mat_ind = find(trackIDs_unique == trackID_curr) ; 
        
@@ -129,6 +133,21 @@ for j = 1:length(tracks_struct_nonempty)
        ycm_mat(frame_num_curr,mat_ind) = state_curr(3) ; 
        area_mat(frame_num_curr,mat_ind) = area_curr ; 
     end
+end
+
+% merge tracks together?
+if mergeFlag 
+   [xcm_mat,ycm_mat,area_mat] = mergeFlyTracks(xcm_mat,ycm_mat,area_mat) ;
+end
+
+if (0)
+   figure ; 
+   hold on
+   cvecs = lines(size(xcm_mat,2)) ; 
+   for q = 1:size(xcm_mat,2)
+      plot(xcm_mat(:,q), ycm_mat(:,q), '.-', 'MarkerFaceColor',cvecs(q,:))
+   end
+   axis equal
 end
 
 % filter out trajectories that are too short
@@ -168,12 +187,18 @@ end
 % if there is a time in which the fly is outside the FOV, take that as
 % background
 %out = medfilt1(double(out),10) ;
-bgIndex = find(out,1,'first') ; % find the first "out" image and make it the BG image
+bgIndexStart = find(out,1,'first') ; % find the first "out" image and make it the BG image
 firstEntranceIdx = find(~out,1,'first') ; 
 
-if (~isempty(bgIndex)) && (firstEntranceIdx > (assignmentThresh + 1))
+bgIndexEnd = find(out,1,'last') ; % also try frames at end where fly might be "out"
+out_idx_list = idx_by_thresh(out) ; 
+endOutDuration = length(out_idx_list{end}) ; 
+
+if (~isempty(bgIndexStart)) && (firstEntranceIdx > (assignmentThresh + 1))
     %bg = ReadCineFileImage(cinFilename, tvec(bgIndex), false);
-    bg  = myReadCinImage(cindata, tvec(bgIndex)) ;
+    bg  = myReadCinImage(cindata, tvec(bgIndexStart)) ;
+elseif (~isempty(bgIndexEnd)) && (endOutDuration > (assignmentThresh + 1))
+    bg  = myReadCinImage(cindata, tvec(bgIndexEnd)) ;
 else
      % if the fly is always in FOV, fabricate a BG image (automatically, yay)
    
@@ -397,8 +422,104 @@ pause(1/50)
 end
 
 %==========================================================================
+%% if there are multiple tracks that are really the same object, merge
+% could add in a check for similar area, but the processing makes the areas
+% really variable
+function [xmat_out, ymat_out, amat_out] = ...
+    mergeFlyTracks(xmat_in, ymat_in, amat_in)
+% --------------------------
+% params
+Dt = 15 ; 
+Dr = 60 ; 
+% --------------------------------------------
+% find beginnings and ending of each track
+N_tracks = size(xmat_in, 2) ; 
+track_start_idx = ones(N_tracks,1) ; 
+track_end_idx = ones(N_tracks,1) ; 
+track_start_pos = nan(N_tracks,2) ; 
+track_end_pos = nan(N_tracks,2) ; 
 
-function [xmat_out, ymat_out] = mergeFlyTracks(xmat_in, ymat_in, Dt, Dr)
+for i = 1:N_tracks
+   start_idx = find(~isnan(xmat_in(:,i)) & ~isnan(ymat_in(:,i)), 1, 'first') ; 
+   end_idx = find(~isnan(xmat_in(:,i)) & ~isnan(ymat_in(:,i)), 1, 'last') ; 
+   
+   if ~isempty(start_idx)
+       track_start_idx(i) = start_idx ; 
+       track_start_pos(i,:) = [xmat_in(start_idx,i), ymat_in(start_idx,i)] ; 
+   end
+   if ~isempty(end_idx)
+       track_end_idx(i) = end_idx ; 
+       track_end_pos(i,:) = [xmat_in(end_idx,i), ymat_in(end_idx,i)] ;  
+   end
+end
 
+% --------------------------------------
+% check tracks with plot?
+if (0)
+    N_frames = size(xmat_in,1) ;
+    N_tracks = size(xmat_in,2) ; 
+    frames = 1:N_frames ;
+    
+    % look at trajectories
+    figure ;
+    ax1 = subplot(2,1,1) ;
+    hold on
+    ax2 = subplot(2,1,2) ;
+    hold on
+    for k = 1:N_tracks
+        plot(ax1,frames, xmat_in(:,k), '.-')
+        plot(ax2,frames, ymat_in(:,k), '.-')
+    end
+    ylabel(ax1, 'X')
+    ylabel(ax2, 'Y')
+    
+    % look at start and end times
+    figure ;
+    hold on
+    for k = 1:N_tracks
+       plot([1,2], [track_start_idx(k), track_end_idx(k)] ,'o-')
+    end
+end
+% ------------------------------------------------------------------------
+% find pairings of starts/ends that are within some time interval of each
+% other
+tDist = pdist2(track_start_idx, track_end_idx) ; 
+[merge_start_idx, merge_end_idx] = find(tDist < Dt) ; 
 
+% but make sure that one track doesn't start and end while the other track
+% is going
+full_overlap_ind = (track_start_idx(merge_start_idx) >= ...
+    track_start_idx(merge_end_idx)) & (track_end_idx(merge_start_idx) <= ...
+    track_end_idx(merge_end_idx)) ;
+
+merge_start_idx = merge_start_idx(~full_overlap_ind) ; 
+merge_end_idx = merge_end_idx(~full_overlap_ind) ; 
+
+% then find distance between start/end points that are candidates for
+% merging
+rDist = myNorm(track_end_pos(merge_end_idx,:) - ...
+    track_start_pos(merge_start_idx,:)) ;
+dist_idx = (rDist < Dr) ; 
+
+merge_idx = [merge_start_idx(dist_idx), merge_end_idx(dist_idx)] ; 
+
+% ------------------------------------------------------------------------
+% generate output matrices, merge columns, and then trim off extra columns
+xmat_out = xmat_in ; 
+ymat_out = ymat_in ; 
+amat_out = amat_in ;
+
+for j = 1:size(merge_idx,1) 
+    % x 
+   xmat_out(:,merge_idx(j,1)) = nanmean(xmat_out(:,merge_idx(j,:)),2) ; 
+   xmat_out(:,merge_idx(j,2)) = nan ; 
+   
+   % y
+   ymat_out(:,merge_idx(j,1)) = nanmean(ymat_out(:,merge_idx(j,:)),2) ; 
+   ymat_out(:,merge_idx(j,2)) = nan ; 
+   
+   % area
+   amat_out(:,merge_idx(j,1)) = nanmean(amat_out(:,merge_idx(j,:)),2) ; 
+   amat_out(:,merge_idx(j,2)) = nan ; 
+end
 end

@@ -18,13 +18,27 @@ end
 movNumStr = num2str(movNum,'%03d') ; 
 folderName = ['Expr_' num2str(exprNum) '_mov_' movNumStr] ;
 datapath = fullfile(savePath, folderName) ;
-datafilename = fullfile(datapath, [folderName '_test.mat']) ;
+
+datafilename_test = fullfile(datapath, [folderName '_test.mat']) ;
+datafilename_cleaned = fullfile(datapath, [folderName '_cleaned.mat']) ;
+if exist(datafilename_cleaned,'file')
+    datafilename = datafilename_cleaned ;
+else
+    datafilename = datafilename_test ;
+end
 
 %cd(datapath)
 
 if (exist(datafilename,'file') == 2) && ~overWriteFlag
+    % if we're not supposed to overwrite
    data = importdata(datafilename) ; 
    return
+elseif (exist(datafilename,'file') == 2) && overWriteFlag
+    % calculate angles
+    data = calcAnglesMain(datafilename, largePertFlag, true, true) ;
+   
+   % close plot windows
+   close all
 else 
    analysis_results = load(fullfile(savePath, folderName, ...
        [folderName '_results.mat'])) ; 
@@ -37,7 +51,7 @@ else
     
    % estimate roll vectors
    data = analysis_results.data ; 
-   [rhoTimes, rollVectors] = estimateRollVector(data) ;
+   [rhoTimes, rollVectors] = estimateRollVector(data,largePertFlag) ;
    data.rhoTimes = rhoTimes ;
    data.rollVectors = rollVectors ;
    save(datafilename, 'data')

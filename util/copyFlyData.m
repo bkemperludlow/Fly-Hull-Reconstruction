@@ -2,14 +2,15 @@
 % script to transfer fly data to an external hard drive. only takes
 % analysis, mp4s, and README
 %--------------------------------------------------------------------------
-sourcePath = 'D:\Box Sync Old\VNC Sensory Lines\' ;
-destinationPath = 'F:\Fly Data\Darshna Sensory Lines\' ;
+sourcePath = 'D:\Box Sync Old\Opto Silencing\' ; %'D:\Box Sync Old\VNC Motor Lines\' ;
+destinationPath = 'F:\Fly Data\Opto Silencing\' ; % 'F:\Fly Data\VNC Motor Lines\' ;
 
 % which experiments to copy over
-ExprNums =  7:30 ;
+ExprNums = sort([45])  ;
 
 % files/folders to grab
-suffix_cell = {'mp4','Analysis','README.txt'} ;
+suffix_cell = {'mp4','Analysis','README.txt', ...
+    'calibration\calibration_dltCoefs.csv', 'calibration\wandPoints.csv'} ;
 
 % get directory structure for source
 sourceDir = dir(sourcePath) ;
@@ -37,7 +38,7 @@ for i = 1:length(ExprNums)
             sourceCurr = fullfile(sourceDir(exprInd).folder, ...
                 sourceDir(exprInd).name, suffix_cell{j}) ;
             destCurr = fullfile(destFolder, suffix_cell{j}) ;
-            copyfile(sourceCurr, destCurr) ;
+            [status, msg] = copyfile(sourceCurr, destCurr) ;
             disp(['Successfully copied ' sourceCurr])
         catch
             disp(['failed to copy ' sourceCurr])

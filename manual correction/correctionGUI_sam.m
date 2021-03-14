@@ -52,22 +52,31 @@ function correctionGUI_sam_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   unrecognized PropertyName/PropertyValue pairs from the
 %            command line (see VARARGIN)
-tmsCurr_default = 17.375 ; %-10 ;
+tmsCurr_default = 34 ; %-10 ;
 saveEvery_default = 200000 ; %200
-startdir_default = 'D:\Fly Data\VNC Sensory Lines\08_09042018\Analysis\Unsorted\Expr_8_mov_008\' ;%'D:\Fly Data\VNC Motor Lines\' ;
+%startdir_default = 'D:\Fly Data\VNC MN Chrimson\28_05042019\Analysis\Unsorted\Expr_28_mov_006\' ;%'D:\Fly Data\VNC Motor Lines\' ;
+startdir_default = 'D:\Fly Data\Opto Silencing\18_11052019\Analysis\Unsorted\Expr_18_mov_041\' ;
+bodyFrameFlag_default = false ; 
+largePertFlag_default = false ;
 
+% marker size value (different screens can make points harder to see)
+handles.marker_size = 4 ;  %3
 % assign default values if no inputs provided
 switch nargin
     case 3
         handles.tmsCurr = tmsCurr_default ;
         handles.saveEvery = saveEvery_default ;
         handles.startdir = startdir_default ;
+        handles.bodyFrameFlag = bodyFrameFlag_default ;
+        handles.largePertFlag = largePertFlag_default ;
         
         handles.tmsCurr_default = tmsCurr_default ;
     case 4
         handles.tmsCurr = varargin{1} ;
         handles.saveEvery = saveEvery_default ;
         handles.startdir = startdir_default ;
+        handles.bodyFrameFlag = bodyFrameFlag_default ;
+        handles.largePertFlag = largePertFlag_default ;
         
         handles.tmsCurr_default = varargin{1} ;
         
@@ -75,12 +84,32 @@ switch nargin
         handles.tmsCurr = varargin{1} ;
         handles.saveEvery = varargin{2} ;
         handles.startdir = startdir_default ;
+        handles.bodyFrameFlag = bodyFrameFlag_default ;
+        handles.largePertFlag = largePertFlag_default ;
         
         handles.tmsCurr_default = varargin{1} ;
     case 6
         handles.tmsCurr = varargin{1} ;
         handles.saveEvery = varargin{2} ;
         handles.startdir = varargin{3} ;
+        handles.bodyFrameFlag = bodyFrameFlag_default ;
+        handles.largePertFlag = largePertFlag_default ;
+        
+        handles.tmsCurr_default = varargin{1} ;
+    case 7
+        handles.tmsCurr = varargin{1} ;
+        handles.saveEvery = varargin{2} ;
+        handles.startdir = varargin{3} ;
+        handles.bodyFrameFlag = varargin{4} ;
+        handles.largePertFlag = largePertFlag_default ;
+        
+        handles.tmsCurr_default = varargin{1} ;
+    case 8
+        handles.tmsCurr = varargin{1} ;
+        handles.saveEvery = varargin{2} ;
+        handles.startdir = varargin{3} ;
+        handles.bodyFrameFlag = varargin{4} ;
+        handles.largePertFlag = varargin{6} ;
         
         handles.tmsCurr_default = varargin{1} ;
     otherwise
@@ -167,7 +196,7 @@ handles.scale = scale ;
 handles.Lstub = 3.0*scale ;
 handles.Lbar  = 10*scale ;
 
-handles.ignoreFrames = [] ;
+%handles.ignoreFrames = [] ;
 
 % flags to mark whether or not things need to be updated
 handles.bodyChangeFlag = false ;
@@ -187,9 +216,12 @@ handles.chordLeftChangeFlag = false ;
 % intialize plot elements
 
 hold(handles.main_axes, 'on')
-handles.hBody = plot3(handles.main_axes, NaN, NaN, NaN, 'g.','MarkerSize',3) ;
-handles.hRightWing = plot3(handles.main_axes, NaN, NaN, NaN, 'r.','MarkerSize',3) ;
-handles.hLeftWing = plot3(handles.main_axes, NaN, NaN, NaN, 'b.','MarkerSize',3) ;
+handles.hBody = plot3(handles.main_axes, NaN, NaN, NaN, 'g.',...
+    'MarkerSize',handles.marker_size) ;
+handles.hRightWing = plot3(handles.main_axes, NaN, NaN, NaN, 'r.',...
+    'MarkerSize',handles.marker_size) ;
+handles.hLeftWing = plot3(handles.main_axes, NaN, NaN, NaN, 'b.',...
+    'MarkerSize',handles.marker_size) ;
 
 handles.hAhat = line(handles.main_axes,[NaN, NaN],[NaN, NaN],[NaN, NaN],...
     'Color','r','LineWidth',8);
@@ -511,7 +543,7 @@ if ~isempty(tempdirlist)
     set(handles.data_dir,'String',{tempdirlist(~[tempdirlist(:).isdir]).name})
     handles.datapath_curr = tempdirlist(1).name ;
 end
-if loadFlag
+if loadFlag && ~isempty(handles.datapath_curr)
     handles = loadData(hObject, handles) ;
 else
     guidata(hObject, handles);
@@ -533,6 +565,17 @@ function clear_data_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+tempdirlist = handles.dirlist ;
+remove_idx = arrayfun(@(x) strcmp(x.name, handles.datapath_curr), ...
+    tempdirlist) ;
+
+% take data name out of list box (if we have things to remove)
+if (sum(remove_idx) > 0)
+    set(handles.data_dir,'String',{tempdirlist(~remove_idx).name})
+    % take data file out of directory
+    handles.dirlist = tempdirlist(~remove_idx) ;
+end
+
 clearDisplay(hObject) ;  % reset plot window
 handles.dataFlag = false ;      % signal that there's no more data
 handles.datapath_curr = [] ;    % empty current data path
@@ -550,6 +593,12 @@ if ~isempty(handles.datapath_curr)
         data = data.data ;
     end
     
+    % do we switch to body frame coordinates?
+    if handles.bodyFrameFlag 
+       data = labToBodyFrame(data, handles.largePertFlag) ;  
+       handles.bodyFrameRotMats = data.bodyFrameRotMats ; 
+       handles.bodyCM_orig = data.bodyCM_orig ;
+    end
     %================================================
     % add fields to handles for relevant plotting data
     %================================================
@@ -577,6 +626,7 @@ if ~isempty(handles.datapath_curr)
     handles.frameStartInd = frameStartInd ;
     handles.frameEndInd   = [frameStartInd(2:end)-1 ; size(data.res,1)] ;
     handles.noffset       = data.params.startTrackingTime - data.params.firstTrackableFrame  ;
+    handles.params        =data.params ; 
     
     tvec = (0:data.Nimages-1) + data.params.startTrackingTime ;
     handles.tvec = tvec / 8000 * 1000 ; % in ms
@@ -624,14 +674,27 @@ if ~isempty(handles.datapath_curr)
     % initialize matrices for adjustments/swaps to data
     handles.adjust = zeros(data.Nimages,19);
     handles.rhoFlag   = false(data.Nimages,1);
+    handles.ignoreFlag = false(data.Nimages,1) ;
     handles.pitchflipFlag = false(data.Nimages,1) ;
     handles.wingSwapFlag = false(data.Nimages,1) ;
-    try
-        handles.rhoTimes = data.rhoTimes ;
-        handles.normRolls   = data.rollVectors ;
-    catch
+    
+    % add in fields from data if they exist
+    if isfield(data,'rhoTimes')
+        handles.rhoTimes = data.rhoTimes ;  
+        handles.rhoFlag(handles.rhoTimes) = true ; 
+    else
         handles.rhoTimes = [] ;
+    end
+    if isfield(data,'rollVectors') 
+        handles.normRolls   = data.rollVectors ;
+    else
         handles.normRolls =  zeros(data.Nimages,3) ;
+    end
+    if isfield(data,'ignoreFrames')
+       handles.ignoreFrames = data.ignoreFrames ; 
+       handles.ignoreFlag(handles.ignoreFrames) = true ; 
+    else
+        handles.ignoreFrames = [] ; 
     end
     % enable sliders so that angles can be adjusted
     enableButtons()
@@ -691,12 +754,44 @@ set(toggle_button_handles,'Enable','on')
 
 % ----------------------------------------
 % return toggle buttons to default status
-function resetToggleButtons()
-%handles = guidata(hObject) ;
+function resetToggleButtons(hObject, newFrame)
+% read in handle data
+handles = guidata(hObject) ;
+% get current frame
+frameCurr = newFrame ; 
+% find toggle buttons
 toggle_button_handles = findall(0,'Style','togglebutton') ;
-set(toggle_button_handles,'Value',0) ;
+% get default button background color
 defaultColor = get(0,'defaultUicontrolBackgroundColor') ;
-set(toggle_button_handles,'BackgroundColor',defaultColor) ;
+% loop through toggle buttons to update each depending on their value in
+% new frame
+N_buttons = length(toggle_button_handles) ; 
+for ind = 1:N_buttons
+    button_handle_curr = toggle_button_handles(ind) ; 
+    button_string_curr = get(button_handle_curr,'String') ; 
+    switch button_string_curr
+        case 'Save Roll'
+            toggleVal = handles.rhoFlag(frameCurr) ; 
+            colorStr = 'green' ;         
+        case 'Ignore Frame'
+            toggleVal = handles.ignoreFlag(frameCurr) ; 
+            colorStr = 'red' ;      
+        otherwise
+            toggleVal = 0 ; 
+            colorStr = defaultColor ;
+    end
+    
+    % set toggle button value and apply color change
+    set(button_handle_curr,'Value',toggleVal) ;
+    if toggleVal
+        set(button_handle_curr,'BackgroundColor',colorStr) ; 
+    else
+        set(button_handle_curr,'BackgroundColor',defaultColor) ;
+    end
+end
+guidata(hObject, handles);        
+% set(toggle_button_handles,'Value',0) ;
+% set(toggle_button_handles,'BackgroundColor',defaultColor) ;
 
 % -----------------------------------
 % return sliders to default position
@@ -711,7 +806,7 @@ function saveData(hObject)
 % function to save manual correction results
 handles = guidata(hObject) ;
 f = waitbar(0,'') ;
-f.Children.Title.Interpreter = 'none' ;
+f.Children(end).Title.Interpreter = 'none' ;
 waitbar(0,f, ['Saving data to ' handles.output_path]) ;
 
 % load data file
@@ -749,6 +844,12 @@ end
 
 if isfield(handles, 'manualCorrRangeMS')
     data.manualCorrRangeMS = handles.manualCorrRangeMS ;
+end
+
+if handles.bodyFrameFlag
+   data.bodyCM_orig = handles.bodyCM_orig ; 
+   data.bodyFrameRotMats = handles.bodyFrameRotMats ; 
+   data = bodyToLabFrame(data) ; 
 end
 waitbar(0.66)
 
@@ -1398,7 +1499,7 @@ function bback_Callback(hObject, eventdata, handles)
 handles.frameCurr = handles.frameCurr - 10 ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons()
+resetToggleButtons(hObject, handles.frameCurr)
 resetSliders()
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
@@ -1412,10 +1513,10 @@ function back_Callback(hObject, eventdata, handles)
 % hObject    handle to back (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.frameCurr = handles.frameCurr - 1 ;
+handles.frameCurr = max([handles.frameCurr - 1, 1]) ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons()
+resetToggleButtons(hObject, handles.frameCurr)
 resetSliders()
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
@@ -1436,7 +1537,7 @@ end
 handles.frameCurr = handles.frameCurr + 1 ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons()
+resetToggleButtons(hObject, handles.frameCurr)
 resetSliders()
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
@@ -1458,7 +1559,7 @@ end
 handles.frameCurr = handles.frameCurr + 10 ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons()
+resetToggleButtons(hObject, handles.frameCurr)
 resetSliders()
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
@@ -1476,9 +1577,11 @@ button_state = get(hObject,'Value');
 frameCurr = handles.frameCurr ;
 
 if button_state == get(hObject,'Max')
+    handles.ignoreFlag(frameCurr) = true ;
     handles.ignoreFrames = sort(unique([handles.ignoreFrames, frameCurr])) ;
     set(hObject,'BackgroundColor','red')
 elseif button_state == get(hObject,'Min')
+    handles.ignoreFlag(frameCurr) = false ;
     handles.ignoreFrames = ...
         sort(unique(handles.ignoreFrames(handles.ignoreFrames ~= frameCurr))) ;
     defaultColor = get(0,'defaultUicontrolBackgroundColor') ;

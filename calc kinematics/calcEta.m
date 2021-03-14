@@ -56,7 +56,7 @@ if (eta~=0)
     sgn2 = round(sgn) ; % to prevent cases where sgn = +-1 +1 epsilon
     if (abs(sgn-sgn2)>delta)
         disp('ERR in the calculation of eta. Check this.') ;
-        keyboard ;
+        %keyboard ;
     end
     
     eta = eta * sgn2 * wingFlag ;

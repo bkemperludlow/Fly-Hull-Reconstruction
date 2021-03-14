@@ -1,7 +1,7 @@
 
 function data = hullAnalysis_mk3 (bodyHull, wing1Hull, wing2Hull, params, ...
     mergedWingsFlag, oneWingEmptyFlags, outputFilename, plotFlag,...
-    saveFigFlag, saveFigPath, verboseFlag)
+    saveFigFlag, saveFigPath, verboseFlag, saveTempDataFlag)
 % data =
 %                      Nimages: 464                     num of images
 %                          res: [12473860x4 int16]      voxel coordinates of the entire fly + wings
@@ -57,6 +57,9 @@ if ~exist('saveFigPath','var')
 end
 if ~exist('verboseFlag','var')
     verboseFlag = false ;
+end
+if ~exist('saveTempDataFlag','var')
+    saveTempDataFlag = false ;
 end
 %-------------------------------
 % params and data
@@ -576,7 +579,11 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     
     % 1st axis = main body axis (roll axis, e.g. Ahat)
     % (the other principal components of the body are unreliable)
-    rollHat   = pcaCoeffs(:,1);
+    try
+        rollHat   = pcaCoeffs(:,1);
+    catch
+        continue
+    end
     
     % make roll axis have positive z-component (meaning it points upward)
     % NOTE THAT IN EXTREME MANEUVERS THIS MIGHT BE WRONG
@@ -1674,12 +1681,12 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     
     span1Hats(ind,:)   = span1Hat' ;
     %edited by SW on 1/17/2015
-    if exist('chord1Hat')
+    if exist('chord1Hat','var')
         chord1Hats(ind,:)  = chord1Hat' ;
     else
         chord1Hats(ind,:) = [NaN NaN NaN] ;
     end
-    if exist('chord1Hat2')
+    if exist('chord1Hat2','var')
         chord1Hat2s(ind,:)  = chord1Hat2 ;
     else
         chord1Hat2s(ind,:) = [NaN NaN NaN] ;
@@ -1688,13 +1695,13 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     phi1Hats(ind,:)    = phi1Hat' ;
     
     span2Hats(ind,:)   = span2Hat' ;
-    if exist('chord2Hat')
+    if exist('chord2Hat','var')
         chord2Hats(ind,:)  = chord2Hat' ;
     else
         chord2Hats(ind,:) = [NaN NaN NaN] ;
     end
     %chord2Hats(ind,:)  = chord2Hat' ;
-    if exist('chord2Hat2')
+    if exist('chord2Hat2','var')
         chord2Hat2s(ind,:)  = chord2Hat2 ;
     else
         chord2Hat2s(ind,:) = [NaN NaN NaN] ;
@@ -1702,13 +1709,13 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     %chord2Hat2s(ind,:) = chord2Hat2 ;
     phi2Hats(ind,:)    = phi2Hat' ;
     
-    if exist('chord1AltHat')
+    if exist('chord1AltHat','var')
         chord1AltHats(ind,:)  = chord1AltHat' ;
     else
         chord1AltHats(ind,:) = [NaN NaN NaN] ;
     end
     %chord1AltHats(ind,:) = chord1AltHat' ;
-    if exist('chord2AltHat')
+    if exist('chord2AltHat','var')
         chord2AltHats(ind,:)  = chord2AltHat' ;
     else
         chord2AltHats(ind,:) = [NaN NaN NaN] ;
@@ -1718,7 +1725,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     rightWingTips(ind,:) = rightWingTip ;
     leftWingTips(ind,:)  = leftWingTip ;
     
-    if exist('rightChordTopProj')
+    if exist('rightChordTopProj','var')
         rightChordTopProjections(ind) =  rightChordTopProj ;
     else
         rightChordTopProjections(ind) =  NaN ;
@@ -1731,7 +1738,7 @@ for t = startTrackingTime+tempOffset : endTrackingTime %SW added +1. why??? - SW
     end
     %leftChordTopProjections(ind) =  leftChordTopProj ;
     
-    if (plotFlag)
+    if (plotFlag) %&& (ind > 604)
         % plot clustering results
         figure(h) ;
         clf ;
@@ -1879,6 +1886,7 @@ axis equal ; box on ; grid on ;
         %pause (1)  ;
         %%ax = [60 210  0 150 170 260 ] ;
         axis(ax) ;
+        %keyboard
         if (~isempty(outputFilename) && saveFigFlag)
             %cd figs ;
             rotate3d on ;
@@ -1974,7 +1982,7 @@ stroke(:,17) = (180/pi)*phi2s   ;
 stroke(:,18) = (180/pi)*theta2s ;
 stroke(:,19) = (180/pi)*eta2s   ;
 
-if (~isempty(outputFilename))
+if (~isempty(outputFilename)) && (saveTempDataFlag)
     save (outputFilename, ...
         'stroke', 'rollHats', 'span1Hats', 'chord1Hats', 'chord1Hat2s', ...
         'phi1Hats', 'span2Hats', 'chord2Hats', 'chord2Hat2s', 'phi2Hats', 'bodyInd', 'rightWingInd', ...

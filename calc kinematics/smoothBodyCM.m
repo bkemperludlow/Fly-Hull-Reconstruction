@@ -1,18 +1,27 @@
 function [bodyCM_smooth, bodyVel, bodyAccel] = ...
-    smoothBodyCM(bodyCM,smoothType, debugFlag)
-
-if nargin < 2
+    smoothBodyCM(bodyCM,smoothType, diffType, fitType, debugFlag)
+% ----------------------------------------------
+%% inputs and params
+if ~exist('smoothType','var') || isempty(smoothType)
     smoothType = 'spline' ;
-    debugFlag = false ;
-elseif nargin < 3
-    debugFlag = false ; 
 end
-
+if ~exist('diffType','var') || isempty(diffType)
+    diffType = 'movingslope' ; % 'fit' | 'sgolay' | 'movingslope'
+end
+if ~exist('fitType','var') || isempty(fitType)
+    fitType = 'smoothingspline' ; % type of fit object to use to take derivatives
+end
+if ~exist('debugFlag','var') || isempty(debugFlag)
+    debugFlag = false ;
+end
+ 
+% --------------------------------------------------------------
 %% define params
 FPS = 8000 ; % frame rate for videos
 voxelSize = 50e-6 ; % voxel to real space conversion (50 micron per voxel side)
 frames = 1:size(bodyCM,1) ; 
 t = (1/FPS)*frames ; % in seconds
+N_frames = length(t) ; 
 
 dt = mean(diff(t)) ; 
 
@@ -24,6 +33,29 @@ filterOrder = smoothingParams.body_cm_filt_order ;  % filter order
 spanWindow = smoothingParams.body_spanWindow; % regression span for loess
 expectedErr = smoothingParams.body_cm_est_err ; % in voxels (for spline)
 
+% NB: 'movingslope' uses the movingslope function from:
+% http://www.mathworks.com/matlabcentral/fileexchange/16997-movingslope movingslope
+
+sgolay_order = 3 ;  % parameters for sgolay filt
+sgolay_framelen = 55 ; 
+
+movslope_len = 200 ; % 200 
+movslope_order = 2 ; 
+% -------------------------------------------------------
+%% deal with bodyCM units (voxel vs meters)
+meanDiff = nanmean(myNorm(diff(bodyCM))) ; 
+if (meanDiff > 1e-3)
+    % in this case, bodyCM is in voxel coordinates
+    bodyCM = voxelSize.*bodyCM ;
+    voxFlag = true ; % keep this in mind, so we can convert back later
+else
+    voxFlag = false ;
+end
+
+% also convert estimated errors to meters
+expectedErr = expectedErr*voxelSize ; 
+
+% -------------------------------------------------------------------------
 %% cases for different smoothing methods
 switch smoothType
 %-----------------------------------
@@ -57,15 +89,15 @@ switch smoothType
 
         measurementModel     = [1, 0, 0, 0, 0, 0 ; 0, 0, 1, 0, 0, 0 ; ...
                                 0, 0, 0, 0, 1, 0] ;
-        sigma2               = 0.25 ; 
+        sigma2               = voxelSize*0.25 ; 
         processNoise         = sigma2 * [dt^3/3, dt^2/2, 0, 0, 0, 0 ; ...
                                            dt^2/2, dt, 0, 0, 0, 0 ; ...
                                            0, 0, dt^3/3, dt^2/2, 0, 0 ; ....
                                            0, 0, dt^2/2, dt, 0, 0 ; ...
                                            0, 0, 0, 0, dt^3/3, dt^2/2 ; ...
                                            0, 0, 0, 0, dt^2/2, dt ] ; 
-        measurementNoise     = 50 ;  %4
-        stateCovariance      = 1 ; 
+        measurementNoise     = voxelSize*50 ;  %4
+        stateCovariance      = voxelSize*1 ; 
 
         kalman = vision.KalmanFilter(stateTransitionModel,measurementModel,...
             'ProcessNoise',processNoise,'MeasurementNoise',measurementNoise,...
@@ -136,7 +168,7 @@ if debugFlag
    end 
    h_res = figure('PaperPositionMode','auto') ; 
    max_err = max(abs(bodyCM(:) - bodyCM_smooth(:))) ; 
-   edges = (-1*max_err):0.05:(max_err) ;
+   edges = linspace(-1*max_err,max_err,100) ;
    %Nbins = 50 ; 
    for k = 1:3 
        subplot(3,1,k)
@@ -149,24 +181,64 @@ if debugFlag
    end 
 end
 
-%% fit cubic interpolant to take derivatives
-bodyCM_smooth = voxelSize * bodyCM_smooth ; 
-x_cm = bodyCM_smooth(:,1) ; 
-y_cm = bodyCM_smooth(:,2) ; 
-z_cm = bodyCM_smooth(:,3) ; 
+% -----------------------------------------------------------
+%% take derivatives
+switch diffType
+    case 'fit'
+        % fit function and take derivative
+        %bodyCM_smooth = voxelSize * bodyCM_smooth ;
+        x_cm = bodyCM_smooth(:,1) ;
+        y_cm = bodyCM_smooth(:,2) ;
+        z_cm = bodyCM_smooth(:,3) ;
+        
+        c_x = fit(t', x_cm, fitType) ;
+        c_y = fit(t', y_cm, fitType) ;
+        c_z = fit(t', z_cm, fitType) ;
+        
+        [vx, ax] = differentiate(c_x,t) ;
+        [vy, ay] = differentiate(c_y,t) ;
+        [vz, az] = differentiate(c_z,t) ;
+        
+        % combine data into matrices
+        bodyVel = [vx , vy , vz] ;
+        bodyAccel = [ax, ay, az] ;
+    case 'sgolay'
+        % use savitzky golay filter
+        % initialize matrix for derivatives
+        derMat = zeros(size(bodyCM_smooth,1),3,2) ; 
+        
+        % get sgolay filter coeffs
+        [~, g] = sgolay(sgolay_order, sgolay_framelen) ;
+        for dim = 1:3
+            % read in x, y, or z
+            data_curr = bodyCM_smooth(:,dim) ;
+            
+            % loop through levels of differentiation
+            for p = 1:2
+                derMat(:,dim, p) = conv(data_curr, ...
+                    factorial(p)/(-dt)^p * g(:,p+1),'same');
+            end
+        end
+        
+        bodyVel = derMat(:,:,1) ; 
+        bodyAccel = derMat(:,:,2) ; 
+        
+    case 'movingslope'
+        bodyVel = zeros(size(bodyCM_smooth)) ; 
+        bodyAccel = zeros(size(bodyCM_smooth)) ; 
+        movslope_len = min([movslope_len, N_frames-1]) ; 
+        for dim = 1:3 
+           bodyVel(:,dim) = (1/dt)*movingslope(bodyCM_smooth(:,dim),...
+               movslope_len, movslope_order) ; 
+           bodyAccel(:,dim) = (1/dt)*movingslope(bodyVel(:,dim),...
+               movslope_len, movslope_order) ; 
+        end
+    otherwise
+        fprintf('invalid differentiation method: %s \n',diffType)
+        keyboard
+end
 
-c_x = fit(t', x_cm, 'cubicinterp') ; 
-c_y = fit(t', y_cm, 'cubicinterp') ; 
-c_z = fit(t', z_cm, 'cubicinterp') ; 
-
-[vx, ax] = differentiate(c_x,t) ; 
-[vy, ay] = differentiate(c_y,t) ; 
-[vz, az] = differentiate(c_z,t) ; 
-
-% combine data into matrices
-bodyVel = [vx , vy , vz] ; 
-bodyAccel = [ax, ay, az] ; 
-
+% -----------------------------------------------------------
 %% plot results?
 if debugFlag 
    figure; 
@@ -174,8 +246,9 @@ if debugFlag
    for k = 1:3 
        subplot(3,1,k)
        hold on
+       plot(t,[nan; diff(bodyCM(:,k))]./dt,'k.') 
        plot(t,bodyVel(:,k),'r-')
-       %plot(t,[nan; diff(bodyCM(:,k))],'k.') 
+       plot(t,(1/dt)*movingslope(bodyCM_smooth(:,k),200,2),'b-')
 
        axis tight
        xlabel('Time')
@@ -188,14 +261,21 @@ if debugFlag
    for k = 1:3 
        subplot(3,1,k)
        hold on
+       %plot(t,[nan ; nan ; diff(diff(bodyCM(:,k)))]./(dt^2),'k.') 
        plot(t,bodyAccel(:,k),'r-')
-       %plot(t,[nan ; nan ; diff(diff(bodyAccel(:,k)))],'k.') 
+       plot(t,(1/dt)^2*movingslope(movingslope(bodyCM_smooth(:,k),200,2),200,2),'b-')
 
        axis tight
        xlabel('Time')
        ylabel(label_cell_accel{k})
        title(label_cell_accel{k})
    end 
+end
+
+% -----------------------------------------------------------
+%% convert back to voxel coordinates?
+if voxFlag 
+    bodyCM_smooth = (1/voxelSize).*bodyCM_smooth ; 
 end
 
 end

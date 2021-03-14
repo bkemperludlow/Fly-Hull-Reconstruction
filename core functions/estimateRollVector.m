@@ -1,29 +1,96 @@
-function [rhoTimes, rollVectors] = estimateRollVector(data)
-%NEED TO ADJUST TO BE CALCULATING ANGLES IN PLANE PERPENDICULAR TO AHAT
+% -------------------------------------------------------------------------
+% new attempt at estimating roll vectors from data, which we can later use
+% to calculate roll angle for full movie
+%
+% If rhoTimes and rollVectors are not defined (when no manual 
+% correction has been performed) this guesses them 
+% -------------------------------------------------------------------------
+function [rhoTimes, rollVectors] = ...
+    estimateRollVector(data, largePertFlag, interpFlag)
+% ---------------------------
+%% params and inputs
+if ~exist('largePertFlag','var') || isempty(largePertFlag)
+   try
+       largePertFlag = checkAHat(data) ; 
+   catch
+       largePertFlag = false ; 
+   end
+end
+if (~exist('interpFlag','var') || isempty(interpFlag)) && ~largePertFlag
+   interpFlag = false ; 
+elseif (~exist('interpFlag','var') || isempty(interpFlag)) && largePertFlag
+    interpFlag = true ; 
+end
 
-%If rhoTimes and rollVectors are not defined (when no manual 
-%correction has been performed) this guesses them 
+% tolerances for dot product check
 tol_1 = -.7 ; %-.9
 %tol_2 = .3 ;  %.2
 
+% --------------------------------------------
+%% calculate angles to align AHat with x axis
+% this should make left/right checks easier
+if largePertFlag
+    % in cases where gimbal lock may be a problem, use a frame-by_frame
+    % estimate for the body pitch and yaw angles
+    [~, ~, rotM_YP] = calcPitchLargePert(data) ;
+else
+    % otherwise proceed as normal
+    rawPsi  = zeros(data.Nimages,1) ; % yaw
+    rawBeta = zeros(data.Nimages,1) ; % pitch
+    rotM_YP = zeros(3,3,data.Nimages) ; % rotation matrices that will unyaw + unpitch
+    for k=1:data.Nimages
+        AHat = data.AHat(k,:) ;
+        rawPsi(k)  = atan2(AHat(2),AHat(1)); % body angle with respect to x axis 
+        rawBeta(k) = asin(AHat(3));  % body angle with respect to the horizon 
+        rotM_YP(:,:,k) = eulerRotationMatrix(rawPsi(k), rawBeta(k),0) ; 
+    end
+   
+end
+
+% ---------------------------------
+%% grab data from structure
 AHat = data.AHat ;
-wingTipR = data.rightWingTips ;
-wingTipL = data.leftWingTips ;
-wingCMR = data.rightWingCM ;
-wingCML = data.leftWingCM ;
 bodyCM = data.bodyCM ;
 spanHatR = data.rightSpanHats ;
 spanHatL = data.leftSpanHats ;
 
-Nimages = length(AHat) ;
+Nimages = data.Nimages ;
 
-wingTipR_bodyFrame = wingTipR - bodyCM ;
-wingTipL_bodyFrame = wingTipL - bodyCM ;
+% interpolate wing CM and tip?
+if interpFlag
+    [wingCMR, ~, wingTipR] = interpolateWingCM(data,'right') ;
+    [wingCML, ~, wingTipL] = interpolateWingCM(data,'left') ;
+else
+    wingTipR = data.rightWingTips ;
+    wingTipL = data.leftWingTips ;
+    wingCMR = data.rightWingCM ;
+    wingCML = data.leftWingCM ;
+end
 
-wingCMR_bodyFrame = wingCMR - bodyCM ;
-wingCML_bodyFrame = wingCML - bodyCM ;
+% -------------------------------------
+%% transform data into body frame
+% subtract off body CM
+wingTipR = wingTipR - bodyCM ;
+wingTipL = wingTipL - bodyCM ;
 
+wingCMR = wingCMR - bodyCM ;
+wingCML = wingCML - bodyCM ;
 
+% rotate to align body axis with x hat
+wingTipR_bodyFrame = nan(size(wingTipR)) ; 
+wingTipL_bodyFrame = nan(size(wingTipL)) ; 
+wingCMR_bodyFrame = nan(size(wingCMR)) ; 
+wingCML_bodyFrame = nan(size(wingCML)) ; 
+
+for i = 1:Nimages
+    wingTipR_bodyFrame(i,:) = (squeeze(rotM_YP(:,:,i))*wingTipR(i,:)')' ; 
+    wingTipL_bodyFrame(i,:) = (squeeze(rotM_YP(:,:,i))*wingTipL(i,:)')' ; 
+    wingCMR_bodyFrame(i,:) = (squeeze(rotM_YP(:,:,i))*wingCMR(i,:)')' ; 
+    wingCML_bodyFrame(i,:) = (squeeze(rotM_YP(:,:,i))*wingCML(i,:)')' ; 
+end
+
+% -----------------------------------------------------
+%% get wing tip velocities in 
 Ut_R = diff(wingTipR_bodyFrame) ;
 Ut_R_xy = [Ut_R(:,1:2) zeros(length(Ut_R),1)] ;
 Ut_R_xy = Ut_R_xy ./ repmat(myNorm(Ut_R_xy),1,3) ;
@@ -34,8 +101,7 @@ Ut_L_xy = [Ut_L(:,1:2) zeros(length(Ut_L),1)] ;
 Ut_L_xy = Ut_L_xy ./ repmat(myNorm(Ut_L_xy),1,3) ;
 Ut_L_xy = [0, 0, 0; Ut_L_xy] ;
 
-AHat_xy = [AHat(:,1) AHat(:,2) zeros(length(AHat),1)] ;
-AHat_xy = AHat_xy ./ repmat(myNorm(AHat_xy),1,3) ;
+AHat_xy = [ones(Nimages,1), zeros(Nimages,2)] ; 
 
 spanHatR_perpA = spanHatR - repmat(dot(spanHatR,AHat,2),1,3).*AHat ;
 spanHatR_perpA = spanHatR_perpA ./ repmat(myNorm(spanHatR_perpA),1,3) ;
@@ -55,7 +121,7 @@ rollVectors = zeros(Nimages,3) ;
 if ~isempty(goodRollPoints)
     rhoTimes = goodRollPoints' ;
     %rollvector goes from R --> L wing (normally hinge, in this case CoM)
-    rollVec = wingCML_bodyFrame(goodRollPoints,:) - wingCMR_bodyFrame(goodRollPoints,:) ;
+    rollVec = wingCML(goodRollPoints,:) - wingCMR(goodRollPoints,:) ;
     %need to make sure rollHats orthogonal to AHat!
     rollVec = rollVec ./ repmat(myNorm(rollVec),1,3) ;
     
@@ -70,4 +136,15 @@ else
 end
 
 
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% HELPER FUNCTION(S)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ---------------------------------------------------------------------
+%% check for singularity in AHat to see if movie is likely a large pert
+function singularityFlag = checkAHat(data)
+    tol = 0.005 ;
+    [minDist, ~] = min(abs(abs(data.AHat(:,3)) - 1)) ;
+    singularityFlag = (minDist < tol) ;
 end

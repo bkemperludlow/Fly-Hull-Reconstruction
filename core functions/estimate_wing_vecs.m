@@ -7,8 +7,8 @@
 %
 %       -ref_vecs = reference vectors to determine direction of span and
 %       chord for left vs right wing. It is assumed
-%       that the reference vectors in this case are a list of [bodyCM(i),
-%       bodyCM(i-1), wingTip(i-1)].
+%       that the reference vectors in this case are a list of [bodyCM(i);
+%       bodyCM(i-1); wingTip(i-1)].
 %
 %       -wingLength = estimate of wing length. comes from data struct as
 %           wingLength = 35 * params.pixPerCM / 232 ;
@@ -22,8 +22,9 @@
 %       -chord_alt = estimate of alternate chord vector
 %       -N_vox = number of voxels in wing
 %--------------------------------------------------------------------------
-function [spanHat, chordHat, chordAltHat, Nvox, wingTip] = ...
-    estimate_wing_vecs(wing_vox, ref_vecs, wingLength, span_ref, chord_ref, wingCM)
+function [spanHat, chordHat, chordAltHat, Nvox, wingTip, diag1, diag2] = ...
+    estimate_wing_vecs(wing_vox, ref_vecs, wingLength, span_ref, ...
+    chord_ref, wingCM)
 %--------------------------------------------------------------------------
 %% deal with function inputs
 if ~exist('span_ref','var') 
@@ -44,9 +45,10 @@ debugFlag = false ;
 bodyCM = ref_vecs(1,:) ;
 bodyCM_prev = ref_vecs(2,:) ;
 wingTip_prev = ref_vecs(3,:) ;
+
 %--------------------------------------------------------------------------
 %% get span
-if isempty(span_ref)
+if isempty(span_ref) || any(isnan(span_ref))
     % first pass: span = vector from body center of mass to distal wing tip
     farPoint    = farthestPoint(wing_vox, bodyCM, LL) ;
     spanHat = farPoint - wingCM ;
@@ -78,7 +80,7 @@ else
 end
 %----------------------------------------------------------------------
 %% find chord vector
-[chordHat,chordAltHat, ~, ~] = find_chords_quad(wing_vox, spanHat', ...
+[chordHat,chordAltHat, diag1, diag2] = find_chords_quad(wing_vox, spanHat', ...
     wingTip, wingTip_prev, bodyCM, bodyCM_prev) ;
 
 if ~isempty(chord_ref)

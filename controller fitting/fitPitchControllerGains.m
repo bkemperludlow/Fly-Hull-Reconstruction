@@ -1,7 +1,11 @@
-function [K_i, K_p, K, resnorm, residual, J] = ...
+% -------------------------------------------------------------------------
+% function to perform linear least squares fitting for controller gains at
+% a given vaule of deltaT for pitch controller fits (with K!)
+% -------------------------------------------------------------------------
+function [K_i, K_p, K, resnorm, residual, J, Rsq_adjusted] = ...
     fitPitchControllerGains(fwdFlipTimes, deltaPhiFront, deltaT, c_pitch, paramGuess, plotFlag) 
-
-%x = [ K_i, K_p, K] 
+% ----------------------------
+%% prepare kinematic data
 
 bodyPitch = c_pitch(fwdFlipTimes - deltaT) ; 
 theta_0 = c_pitch(0) ;
@@ -9,27 +13,37 @@ pitchVelocity = differentiate(c_pitch, fwdFlipTimes - deltaT) ;
 deltaBodyPitch = bodyPitch - theta_0 ; 
 bodyData = [deltaBodyPitch' ; pitchVelocity'] ; 
 
+% ----------------------------------------------------------------------
+%% define controller equation and set optimizer options
 controllerEq = @(x, xdata) x(1)*xdata(1,:) + x(2)*xdata(2,:) + x(3) ; 
 
 options = optimoptions('lsqcurvefit','Algorithm','levenberg-marquardt',...
-    'display','off','FiniteDifferenceType','central','FunctionTolerance',1e-10); 
+    'display','off','FiniteDifferenceType','central',...
+    'FunctionTolerance',1e-10); 
 %'trust-region-reflective' or 'levenberg-marquardt'
-lb = [] ;%[-2 -0.1 -4]; %
-ub = [] ; %[ 2  0.1  4];
+lb = []; %[-2 -0.1 -4]; % []
+ub = []; %[ 2  0.1  4]; % []
 
-% options = optimoptions('lsqcurvefit','Algorithm','trust-region-reflective',...
-%     'display','off','FiniteDifferenceType','central','FunctionTolerance',1e-10); 
-% %'trust-region-reflective' or 'levenberg-marquardt'
-% lb = [-2 0 -4]; %
-% ub =[ 2 0.1  4];
-
+% -------------------------------------------------------------------------
+%% perform fit and assign output variables
 [x, resnorm, residual, ~, ~, ~, J] = ...
-    lsqcurvefit(controllerEq, paramGuess, bodyData,deltaPhiFront,lb,ub,options) ;
+    lsqcurvefit(controllerEq, paramGuess, bodyData,deltaPhiFront,...
+    lb,ub,options) ;
 
 K_i = x(1) ;
 K_p = x(2) ;
-K = x(3) ; 
+K =  x(3) ; 
 
+% ----------------------------------------------------------------
+%% calculate adjusted coefficient of determination (adjusted R^2)
+SS_tot = sum((deltaPhiFront - mean(deltaPhiFront)).^2) ; 
+SS_reg = resnorm ; 
+n_obs = length(deltaPhiFront) ; 
+n_params = length(x) ; 
+Rsq_adjusted = 1 - ((n_obs - 1)/(n_obs - n_params))*(SS_reg/SS_tot) ; 
+
+% -------------------------------------------------------------------------
+%% plot result?
 if plotFlag
     t = linspace(fwdFlipTimes(1), fwdFlipTimes(end), 100) ; 
     deltaBodyPitch_cont = c_pitch(t - deltaT) - theta_0 ; %continuous

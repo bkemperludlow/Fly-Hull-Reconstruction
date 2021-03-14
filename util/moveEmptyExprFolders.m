@@ -13,7 +13,9 @@ unsortPath = fullfile(analysisPath, 'Unsorted') ;
 
 MIN_MEMORY = 1024 ; % bytes
 
-mkdir(failPath) ; 
+if ~exist(failPath,'dir')
+    mkdir(failPath) ; 
+end
 rootPathDir = rdir([analysisPath '\Expr*']) ;  
 
 for i = 1:length(rootPathDir)

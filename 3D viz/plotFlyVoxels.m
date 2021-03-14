@@ -2,7 +2,8 @@
 % function to generate a plot of the body and wing voxels for a specific
 % frame
 %--------------------------------------------------------------------------
-function h_vox = plotFlyVoxels(data, frame_num, h_vox)
+function [h_vox, bodyCoords, rightWingCoords, leftWingCoords] = ...
+    plotFlyVoxels(data, frame_num, h_vox, altChordFlag)
 %--------------------------------------------------------------------------
 %% params and inputs
 if ~exist('h_vox','var') || isempty(h_vox)
@@ -10,7 +11,9 @@ if ~exist('h_vox','var') || isempty(h_vox)
 else
     set(0,'CurrentFigure',h_vox)
 end
-
+if ~exist('altChordFlag','var') || isempty(altChordFlag)
+    altChordFlag = true ; 
+end
 ax = gca ; 
 
 scale = 4 ; % 2; % 4
@@ -81,6 +84,10 @@ rightSpanHat = data.rightSpanHats(frame_num,:) ;
 leftSpanHat = data.leftSpanHats(frame_num,:) ;
 rightChordHat = data.rightChordHats(frame_num,:) ; 
 leftChordHat = data.leftChordHats(frame_num,:) ;
+if altChordFlag
+   rightChordAltHat = data.chord1AltHats(frame_num,:) ; 
+   leftChordAltHat = data.chord2AltHats(frame_num,:) ; 
+end
 %--------------------------------------------------------------------------
 %% make plot
 
@@ -125,6 +132,18 @@ line(ax,[cl(1), cl(1)+ scale*8*leftChordHat(1)],...
     [cl(2), cl(2)+ scale*8*leftChordHat(2)],...
     [cl(3), cl(3)+ scale*8*leftChordHat(3)],...
     'Color','r','LineWidth',4);
+
+% wing vectors (alt chord)
+if altChordFlag
+    line(ax, [cr(1), cr(1)+ scale*8*rightChordAltHat(1)],...
+        [cr(2), cr(2)+ scale*8*rightChordAltHat(2)],...
+        [cr(3), cr(3)+ scale*8*rightChordAltHat(3)],...
+        'Color','b','LineWidth',4,'LineStyle','--');
+    line(ax,[cl(1), cl(1)+ scale*8*leftChordAltHat(1)],...
+        [cl(2), cl(2)+ scale*8*leftChordAltHat(2)],...
+        [cl(3), cl(3)+ scale*8*leftChordAltHat(3)],...
+        'Color','r','LineWidth',4,'LineStyle','--');
+end
 
 hold(ax, 'off')
 box(ax, 'on')

@@ -11,7 +11,7 @@ function [newChord, newAltChord, newDiag1, newDiag2] = refineChordVector(data, w
 SPEED_THRESHOLD = 1; % m/s
 DELTA = 17; % take +17 and -17 points from each time point. to find the "current" stroke plane.
 
-plotFlag = false ;
+plotFlag = true ;
 
 switch upper(wingLetter)
     case 'R'

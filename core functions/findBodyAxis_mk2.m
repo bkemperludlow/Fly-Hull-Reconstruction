@@ -8,7 +8,7 @@ if (~exist('plotFlag','var'))
     plotFlag = false ;
 end
 
-delta    = round(8 * (data.params.pixPerCM/232)) %#ok<NOPRT> % delta=8 for 232 zoom, delta=4 for 118 zoom
+delta    = round(8 * (data.params.pixPerCM/232)) ; %#ok<NOPRT> % delta=8 for 232 zoom, delta=4 for 118 zoom
 fraction = 0.15 ;
 colmap   = [0 0.8 0 ; 1 0 0 ; 0 0 1 ];
 

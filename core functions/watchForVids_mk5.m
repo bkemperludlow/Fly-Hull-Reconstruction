@@ -9,7 +9,7 @@
 function watchForVids_mk5()
 %pathToWatch = 'D:\Raymond Analysis Test\test automation\' ;
 % pathToWatch = 'D:\Sam Analysis Test\01_23062017\';
-pathToWatch = 'D:\Box Sync Old\VNC Motor Lines\50_20122018\';
+pathToWatch = 'D:\Box Sync Old\Test\14_21102020\' ;
 
 % try to get experiment number automatically
 if ~strcmp(pathToWatch(end),'\')
@@ -21,7 +21,7 @@ ExprNum = str2double(folderSplit{1}) ;
 
 mp4Prefix = ['Expr_' num2str(ExprNum)] ; 
 
-clust = parcluster('myLocalProfile') ; 
+clust = parcluster('local') ; 
 clust.JobStorageLocation = pathToWatch ; 
 clust.HasSharedFilesystem = true ; 
 analysis_job_cell = cell(1) ; 
@@ -74,7 +74,9 @@ while true
         %mp4_job_cell{queue(1)+1} = batch(clust,'combineAllMoviesInFolder',...
         %    0,{pathToWatch, queue(1), mp4Prefix},'CaptureDiary',false) ;
         analysis_job_cell{queue(1)+1} = batch(clust,'flyAnalysisMain',...
-            0,{queue(1), ExprNum, pathStruct, true},'CaptureDiary',false) ; 
+            0,{queue(1), ExprNum, pathStruct, true},'CaptureDiary',false,...
+            'Pool', [2, 4]) ;
+        % diary(analysis_job_cell{queue(1)+1}, 'myDiary.txt')
         %runManyAnalysesAuto_mk2(queue(1), ExprNum, pathStruct) 
     end
     queue = queue(2:numel(queue)) ; %remove first element
@@ -97,7 +99,7 @@ end
         fclose(fileID) ;
         
         xyEventCount = xyEventCount + 1 ;
-        xyEventNums = [xyEventNums str2num(eventName(4:6))] ;
+        xyEventNums = [xyEventNums str2double(eventName(4:6))] ;
         xyEventTimes = [xyEventTimes, datetime] ;
     end
     
@@ -111,7 +113,7 @@ end
         fclose(fileID) ;
         
         xzEventCount = xzEventCount + 1 ;
-        xzEventNums = [xzEventNums str2num(eventName(4:6))] ;
+        xzEventNums = [xzEventNums str2double(eventName(4:6))] ;
         xzEventTimes = [xzEventTimes, datetime] ;
     end
 
@@ -125,7 +127,7 @@ end
         fclose(fileID) ;
         
         yzEventCount = yzEventCount + 1 ;
-        yzEventNums = [yzEventNums str2num(eventName(4:6))] ;
+        yzEventNums = [yzEventNums str2double(eventName(4:6))] ;
         yzEventTimes = [yzEventTimes, datetime] ;
     end
 %----------------------------------------------------------------------------------------------------------------

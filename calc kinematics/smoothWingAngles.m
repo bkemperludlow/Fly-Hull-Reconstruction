@@ -1,6 +1,5 @@
 function [anglesMat, smooth_anglesMat, sp_phi, sp_theta, sp_psi ] = ...
-    smoothWingAngles(data, wingSide)
-
+    smoothWingAngles(data, wingSide, frameType)
 %--------------------------------------------------------------------------
 %Takes the output of calculate angle and returns arrays of angles, smoothed
 %angles, and splines. Order is [phi, theta, psi]
@@ -9,7 +8,10 @@ function [anglesMat, smooth_anglesMat, sp_phi, sp_theta, sp_psi ] = ...
 %
 %--------------------------------------------------------------------------
 %% params
-debugFlag = false;
+if ~exist('frameType','var') || isempty(frameType)
+    frameType = 'Body' ;
+end
+debugFlag = false ;
 debugFlag2 = false ;
 
 defineConstantsScript
@@ -40,7 +42,7 @@ hampel_nsigma = smoothingParams.wing_hampel_nsigma ;
 %--------------------------------------------------------------------------
 %% load data
 dt = 1/8000 ;
-angles = data.anglesBodyFrame ;
+angles = data.(['angles' frameType 'Frame']) ;
 t = (data.params.startTrackingTime : data.params.endTrackingTime )*dt ;
 
 if isfield(data,'manualCorrRangeMS')
@@ -62,9 +64,9 @@ switch wingSide
         psi = (180/pi)*unwrap((pi/180)*angles(:, ETAL)) ;
         ignoreIndPhi = unique([find(isnan(angles(:, PHIL))==1)' ignoreFrames]) ;
     case 'R'
-        phi = angles(:, PHIR) ;
-        if wingSide == 'R'
-            phi = -1*phi;
+        phi = angles(:,PHIR) ;
+        if ~strcmp(frameType,'Lab')
+            phi = -1.*phi ;
         end
         theta = angles(:, THETAR) ;
         psi = (180/pi)*unwrap((pi/180)*angles(:, ETAR)) ;
@@ -108,19 +110,22 @@ end
 %% interpolate ignore frames
 nanIndPhi = isnan(phi) ;
 notNanIndPhi = ~isnan(phi) ;
-c_phi = fit(t(notNanIndPhi)',  phi(notNanIndPhi),'cubicinterp') ;
+c_phi = fit(t(notNanIndPhi)',  phi(notNanIndPhi),'smoothingspline') ;
+% c_phi = fit(t(notNanIndPhi)',  phi(notNanIndPhi),'cubicinterp') ;
 phi_interp = c_phi(t(nanIndPhi)) ;
 %phi_interp = interp1(t(notNanIndPhi), phi(notNanIndPhi), t(nanIndPhi),'spline') ;
 
 nanIndTheta = isnan(theta) ;
 notNanIndTheta = ~isnan(theta) ;
-c_theta = fit(t(notNanIndTheta)',  theta(notNanIndTheta),'cubicinterp') ;
+c_theta = fit(t(notNanIndTheta)',  theta(notNanIndTheta),'smoothingspline') ;
+% c_theta = fit(t(notNanIndTheta)',  theta(notNanIndTheta),'cubicinterp') ;
 theta_interp = c_theta(t(nanIndTheta)) ;
 %theta_interp = interp1(t(notNanIndTheta), theta(notNanIndTheta), t(nanIndTheta),'spline') ;
 
 nanIndPsi = isnan(psi) ;
 notNanIndPsi = ~isnan(psi) ;
-c_psi = fit(t(notNanIndPsi)',  psi(notNanIndPsi),'cubicinterp') ;
+c_psi = fit(t(notNanIndPsi)',  psi(notNanIndPsi),'smoothingspline') ;
+% c_psi = fit(t(notNanIndPsi)',  psi(notNanIndPsi),'cubicinterp') ;
 psi_interp = c_psi(t(nanIndPsi)) ;
 %psi_interp = interp1(t(notNanIndPsi), psi(notNanIndPsi), t(nanIndPsi),'spline') ;
 
@@ -187,6 +192,10 @@ psi_filt = filterEulerAngle(psi_comb, eta_filt_lvl) ;
 [sp_psi, ~, ~] =  mySplineSmooth(t, psi_smooth, psiEstErr) ;
 
 if debugFlag2
+    
+    t1Ind = find(t == tlim(1)) ;
+    t2Ind = find(t == tlim(2)) ;
+    
     %under construction
     phi_smooth2 = smooth(phi, 9, 'rloess') ;
     theta_smooth2 = smooth(theta_comb, 7, 'rloess') ;

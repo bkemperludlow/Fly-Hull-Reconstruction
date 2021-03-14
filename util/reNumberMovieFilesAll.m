@@ -10,7 +10,8 @@
 %
 % %formerly called "change_nb_v3.m"
 %--------------------------------------------------------------------------
-vidPath = 'D:\Box Sync\VNC Sensory Lines\17_09122018\to_be_sorted\' ;
+vidPath = 'D:\Box Sync Old\Test\17_01112020\' ;
+movFileExt = '.cin' ; 
 pathCurr = pwd ; 
 cd (vidPath)
 
@@ -18,8 +19,13 @@ cd (vidPath)
 datenum_tol = (1/60)*(1/24) ; %should correspond to 1 minute, in units of days 
 
 % get directories for the different camera files and file types
-xyCinDir = dir('xy*.cin') ; xzCinDir = dir('xz*.cin') ; yzCinDir = dir('yz*.cin') ;
-xyXMLDir = dir('xy*.xml') ; xzXMLDir = dir('xz*.xml') ; yzXMLDir = dir('yz*.xml') ;
+xyCinDir = dir(['xy*' movFileExt]) ; 
+xzCinDir = dir(['xz*' movFileExt]) ; 
+yzCinDir = dir(['yz*' movFileExt]) ;
+
+xyXMLDir = dir('xy*.xml') ; 
+xzXMLDir = dir('xz*.xml') ; 
+yzXMLDir = dir('yz*.xml') ;
 
 % how many files for each camera
 numXYCin = length(xyCinDir) ;
@@ -51,7 +57,8 @@ datenumCinAll_sorted = datenumCinAll(cinSortInd,:) ;
 cinDirAll = [xyCinDir ; xzCinDir ; yzCinDir ] ; 
 cinDirAll_sorted = cinDirAll(cinSortInd) ; 
 xmlDirAll = [xyXMLDir ; xzXMLDir ; yzXMLDir] ; 
-xmlDirAll_sorted = xmlDirAll(xmlSortInd) ; 
+% xmlDirAll_sorted = xmlDirAll(xmlSortInd) ; 
+xmlDirAll_sorted = xmlDirAll(cinSortInd) ; 
 
 alreadySorted = [] ; 
 
@@ -85,12 +92,16 @@ cc = 0 ;
 for j = 1:3:length(alreadySorted)
     for m = 0:2
         [~, f, extstr] = fileparts(cinDirAll_sorted(alreadySorted(j+m)).name);
-        copyfile(strcat(vidPath, f, extstr), strcat(f(1:3), num2str(cc,'%03u'), '.cin'));
+        copyfile(strcat(vidPath, f, extstr), ...
+            strcat(f(1:3), num2str(cc,'%03d'), movFileExt));
         
-%         [~, g, extstr2] = fileparts(xmlDirAll_sorted(alreadySorted(j+m)).name);
-%         copyfile(strcat(rootName, g, extstr2), strcat(g(1:3), num2str(cc,'%03u'), '.xml'));
+        [~, g, extstr2] = fileparts(xmlDirAll_sorted(alreadySorted(j+m)).name);
+        copyfile(strcat(vidPath, g, extstr2), ...
+            strcat(g(1:3), num2str(cc,'%03d'), '.xml'));
     end
     cc = cc + 1 ; 
+    
+    fprintf('Sorted movie %03d \n', cc-1)
 end
 
 %--------------------------------------------------------------------------

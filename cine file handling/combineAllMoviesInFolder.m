@@ -1,9 +1,52 @@
-function combineAllMoviesInFolder(folderName, movieNumbers, fileNameString)
-% combineAllMoviesInFolder('G:\Janelia Flies\kir2.1 flies\15_08052016', 0:18,'EmptyVector_kir2.1_Expr_15') ;
+function combineAllMoviesInFolder(folderName, movieNumbers, ...
+    fileNameString, movFileExt)
+% combineAllMoviesInFolder('D:\Box Sync Old\Opto Silencing\43_24022020', 6:44,'Expr43') ;
 %combineAllMoviesInFolder('D:\Janelia Flies\tnt round 2\20_01112016\', 47:66,'Expr_20') ;
-%combineAllMoviesInFolder('D:\Box Sync Old\VNC Motor Lines\48_12122018\', 70:71,'Expr_48') ;
+%combineAllMoviesInFolder('D:\Box Sync Old\Opto Silencing\38_28012020\', 44:62,'Expr_38') ;
+%{
+combineAllMoviesInFolder('D:\Box Sync Old\Opto Silencing\49_03112020\');
+%}
 %prevpath = pwd 
+% -------------------------------------------------------------------------
+%% inputs and params
+% movie numbers
+if ~exist('movieNumbers','var') || isempty(movieNumbers)
+    % if we don't get input, just assume we should do mp4s for all movies
+    xydir = dir(fullfile(folderName, 'xy_*.cin*')) ; 
+    movNumExpression = '(?<camName>[xyz]{2})_(?<movieNum>\d+)' ; 
+    movNumStrs = arrayfun(@(x) regexp(x.name, movNumExpression,'names'), ...
+        xydir, 'UniformOutput',0) ; 
+    movieNumbers = cellfun(@(y) str2double(y.movieNum), movNumStrs) ; 
+    
+    % since we're looping over "movieNumbers" need to make sure it's a row
+    % vector
+    if size(movieNumbers,1) > size(movieNumbers,2)
+       movieNumbers = movieNumbers' ;  
+    end
+end
+% input for fileNameString
+if ~exist('fileNameString','var') || isempty(fileNameString)
+    % pattern to search for in Experiment folder string
+    exprFolderExpression = '(?<exprNum>\d+)_(?<datenum>\d+)' ;
+    
+    % isolate experiment folder (XX_DDMMYYYY)
+    folderNameSplit = strsplit(folderName,'\') ; 
+    empty_idx = cellfun(@(y) isempty(y), folderNameSplit) ; 
+    folderNameSplit = folderNameSplit(~empty_idx) ; 
+    exprFolder = folderNameSplit{end} ; 
+    
+    % find experiment number from folder name
+    reg_exp_out = regexp(exprFolder, exprFolderExpression ,'names') ; 
+    ExprNum = reg_exp_out.exprNum ; 
+    
+    % create default fileNameString from experiment number
+    fileNameString = strjoin({'Expr', num2str(ExprNum)}, '_') ; 
+end
+if ~exist('movFileExt','var') || isempty(movFileExt)
+    movFileExt = '.cin' ; 
+end
 
+% ----------------------------------------------------------------------    
 cd(folderName) ;
 
 s.height = 512 ;
@@ -20,20 +63,14 @@ XZ = 1 ;
 XY = 2 ;
 YZ = 3 ;
 
+% -------------------------------------------------------------------------
+%% loop over movies
 for mov = movieNumbers
     try
-        if (mov<10)
-            zstr = '00' ;
-        elseif (mov<100)
-            zstr = '0' ;
-        else
-            zstr='';
-        end
-        
         disp(['processing movie ' num2str(mov) ]) ;
-        xyfile = ['xy_' zstr num2str(mov) '.cin'] ;
-        xzfile = ['xz_' zstr num2str(mov) '.cin'] ;
-        yzfile = ['yz_' zstr num2str(mov) '.cin'] ;
+        xyfile = ['xy_' num2str(mov,'%03d') movFileExt] ;
+        xzfile = ['xz_' num2str(mov,'%03d') movFileExt] ;
+        yzfile = ['yz_' num2str(mov,'%03d') movFileExt] ;
         
         try
             xydat = getCinMetaData(xyfile) ;
@@ -74,7 +111,7 @@ for mov = movieNumbers
         end   
         metaData(YZ) = s ; %#ok<AGROW>
         
-        outputFileName = [fileNameString '_movie_' zstr num2str(mov)] ;
+        outputFileName = [fileNameString '_movie_' num2str(mov,'%03d')] ;
         fps = 30 ;
         realFrameRate = 8000 ;
    

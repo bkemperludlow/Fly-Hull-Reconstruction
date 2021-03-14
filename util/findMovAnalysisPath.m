@@ -23,11 +23,35 @@ folderSplit = folderSplit(movFolderInd) ;
 % find folder with correct movie number
 MovNumStr = num2str(MovNum, '%03d') ; 
 IND = cellfun(@(y) strcmp(y{4}, MovNumStr), folderSplit) ;
+FAIL_IND = arrayfun(@(x) contains(x.folder, 'Failed Analysis'), ...
+    analysisDir) ; 
+IND = IND & ~FAIL_IND ; 
 
-if (sum(IND) ~= 1)
-   disp('could not find unique folder for this movie')
+if (sum(IND) < 1)
+   fprintf('Could not find folder for movie %d \n', MovNum)
    movAnalysisPath = [] ; 
    return
+elseif (sum(IND) > 1)
+    fprintf('Multiple folders for movie %d -- picking one \n', MovNum)
+    
+    % loop through the different folder options and find memory stored in
+    % each 
+    candidate_idx = find(IND) ; 
+    folderMem = zeros(length(candidate_idx),1) ; 
+    for i = 1:length(candidate_idx)
+       idx_curr = candidate_idx(i) ; 
+       dir_curr = dir(fullfile(analysisDir(idx_curr).folder, ...
+           analysisDir(idx_curr).name)) ; 
+       folderMem(i) = sum([dir_curr.bytes]) ; 
+    end
+    
+    % take the folder with the most occupied memory
+    [~, max_ind] = max(folderMem) ;
+    IND_NEW = false(size(IND)) ; 
+    IND_NEW(candidate_idx(max_ind)) = true ; 
+    
+    % upade index to new folder 
+    IND = IND_NEW ; 
 end
 
 % get path

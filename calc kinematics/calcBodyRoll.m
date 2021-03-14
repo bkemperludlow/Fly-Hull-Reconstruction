@@ -24,13 +24,17 @@
 %       -rho_samp = roll estimates at rhoTimes, used to fit spline
 %
 %--------------------------------------------------------------------------
-function [smoothed_rho, sp_rho, rho_t, rho_samp] = ...
-    calcBodyRoll(rhoTimes, rollVectors, t, rotM_YP, data_params)
+function [smoothed_rho, sp_rho, rho_t, rho_samp, rotM_roll] = ...
+    calcBodyRoll(rhoTimes, rollVectors, t, rotM_YP, data_params, ...
+      largePertFlag)
 %--------------------------------------------------------------------------
 %% params
-binRhoTimesFlag = true ;
-rad2deg = 180 / pi ;
-deg2rad = pi / 180 ;
+if ~exist('largePertFlag','var') || isempty(largePertFlag)
+    largePertFlag = false ; 
+end
+binRhoTimesFlag = true;
+RAD2DEG = 180 / pi ;
+DEG2RAD = pi / 180 ;
 Nimages = length(t) ;
 smoothingParams = setSmoothingParams() ;
 rollErr = smoothingParams.roll_est_err ;
@@ -49,25 +53,34 @@ end
 if binRhoTimesFlag
     rhoTimes_diff = diff(rhoTimes) ;
     chunk_ind = find(rhoTimes_diff > 2) + 1 ;
-    chunk_ind = [1, chunk_ind, (length(rhoTimes)+1)] ;
-    
-    rhoTimes_old = rhoTimes ;
-    rollVectors_old = rollVectors ;
-    
-    rhoTimes = nan(1,(length(chunk_ind)-1)) ;
-    rollVectors = nan(Nimages,3) ;
-    
-    for qq = 1:(length(chunk_ind)-1)
-        chunk_ind_1 = chunk_ind(qq) ;
-        chunk_ind_2 = chunk_ind(qq+1) - 1 ;
-        rhoTimes(qq) = round(mean(rhoTimes_old(chunk_ind_1:chunk_ind_2))) ;
-        rollVectors(rhoTimes(qq),:) = ...
-            nanmean(rollVectors_old(rhoTimes_old(chunk_ind_1:chunk_ind_2),:),1) ;
+    % in case whave high sampling or something, make sure binning doesn't
+    % fuck us over
+    if ~isempty(chunk_ind)
+        % include endpoints in chunk indices
+        chunk_ind = [1, chunk_ind, (length(rhoTimes)+1)] ;
+        
+        rhoTimes_old = rhoTimes ;
+        rollVectors_old = rollVectors ;
+        
+        rhoTimes = nan(1,(length(chunk_ind)-1)) ;
+        rollVectors = nan(Nimages,3) ;
+        
+        % loop through chunks and bin values
+        for qq = 1:(length(chunk_ind)-1)
+            ind1 = chunk_ind(qq) ;
+            ind2 = chunk_ind(qq+1) - 1 ;
+            rhoTimes(qq) = round(mean(rhoTimes_old(ind1:ind2))) ;
+            rollVectors(rhoTimes(qq),:) = ...
+                nanmean(rollVectors_old(rhoTimes_old(ind1:ind2),:),1) ;
+        end
     end
 end
+
 %--------------------------------------------------------------------------
 %% estimate roll angle at rhoTimes by undoing the yaw and pitch rotations
 rho_samp = zeros(length(rhoTimes),1) ;
+rotM_roll = nan(3,3, Nimages) ; 
+rotRollVecs = nan(size(rollVectors)) ; 
 %rho_samp2 = rho_samp ;
 rho_t    = rhoTimes + data_params.firstTrackableFrame - 1 ;
 rho_t    = rho_t / data_params.fps  ;
@@ -77,16 +90,33 @@ for j=1:length(rhoTimes)
     rotM = squeeze(rotM_YP(:,:,it)) ;  % rotation matrix to undo yaw and pitch
     yb = rollVectors(it,:) ; %  goes from R-->L wing hinges
     
+    %try to correct for wing swapping, as can sometimes occur in large perts
+    if largePertFlag && (j > 1)
+    	dotCheck = dot(yb, rollVectors(rhoTimes(j-1),:)) ; 
+        if (dotCheck < -0.5)
+            yb = -1*yb ; 
+            rollVectors(it,:) = yb ;
+        end
+    end
+    
     % perform rotation
     rotyb = rotM * yb' ;
     
+    % make sure (rotated) roll vector has zero component in x direction
+    rotyb(1) = 0 ; 
+    rotyb = rotyb./norm(rotyb) ; 
+    
     % estimate angle
-    rho_samp(j) = acos( rotyb(2) ) * rad2deg * sign(rotyb(3)) ;
+    rho_samp(j) = acos( rotyb(2) ) * RAD2DEG * sign(rotyb(3)) ; 
+    rotRollVecs(it,:) = rotyb' ; 
+    rotM_roll(:,:,it) = eulerRotationMatrix(0,0, rho_samp(j)*DEG2RAD) ; 
 end
 
-%--------------------------------------------------------------------------
-%% unwrap the sampled rho points (only comes up in extreme perts)
-%rho_samp = rad2deg*unwrap(deg2rad*rho_samp) ;
+% ----------------------------------------------
+% unwrap values of rho to check for large jumps
+% NB: this doesn't affect roll matrices, since they don't care about shifts
+% by pi
+rho_samp = RAD2DEG*unwrap(DEG2RAD*rho_samp) ;  
 
 %--------------------------------------------------------------------------
 %% fit spline through roll points
@@ -95,6 +125,50 @@ tol = rollErr ; % 4 ;
 rho0 = fnval(sp_rho, t) ;
 
 smoothed_rho = rho0 ;
+
+%--------------------------------------------------------------------------
+%% fill in roll matrices by interpolating through roll vectors
+if largePertFlag
+    % if it's a large perturbation, we do a frame-by-frame wind up rotation
+    % to avoid gimbal lock weirdness
+    frames = (1:Nimages)' ;
+    %c_x = fit(frames(rhoTimes), rotRollVecs(rhoTimes,1), 'cubicinterp') ;
+    c_y = fit(frames(rhoTimes), rotRollVecs(rhoTimes,2), 'cubicinterp') ;
+    c_z = fit(frames(rhoTimes), rotRollVecs(rhoTimes,3), 'cubicinterp') ;
+    
+    rotRollVecs_interp = [zeros(Nimages,1), c_y(frames), c_z(frames)] ;
+    rotRollVecs_interp = rotRollVecs_interp ./ ...
+        repmat(myNorm(rotRollVecs_interp),1,3) ;
+    
+    rotM_roll(:,:,1) = eulerRotationMatrix(0,0,rho_samp(1)*DEG2RAD) ;
+    rotCheck = nan(Nimages,3) ;
+    
+    for k = 2:Nimages
+        rotyb_curr =  rotRollVecs_interp(k,:) ;
+        rotM_roll_prev = squeeze(rotM_roll(:,:,k-1)) ;
+        
+        rotyb_rot = rotM_roll_prev*rotyb_curr' ;
+        rho_samp_curr = real(acos( rotyb_rot(2) )) * sign(rotyb_rot(3)) ;
+        rotM_roll_curr =  eulerRotationMatrix(0,0,rho_samp_curr) ;
+        rotM_roll(:,:,k) = rotM_roll_curr * rotM_roll_prev ;
+        rotCheck(k,:) = rotyb_rot' ;
+    end
+    
+    if (0)
+        figure ;
+        hold on
+        plot(rotCheck(:,1),'-')
+        plot(rotCheck(:,2),':')
+        plot(rotCheck(:,3),'--')
+        title('Rotated Roll Vector Check')
+    end
+else
+    % if it's not a large perturbation, just use standard method to get
+    % roll matrices
+    for k = 1:Nimages
+        rotM_roll(:,:,k) = eulerRotationMatrix(0,0,DEG2RAD*smoothed_rho(k)) ;
+    end
+end
 
 end
 

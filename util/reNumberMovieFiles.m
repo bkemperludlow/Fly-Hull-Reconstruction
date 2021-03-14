@@ -10,20 +10,22 @@
 %
 % Formerly called "change_nb.m"
 %--------------------------------------------------------------------------
-vidPath = 'H:\Janelia Flies Round 2\06_02072016\round 2' ; 
+vidPath = [] ; % 'D:\Box Sync Old\Opto Silencing\46_23102020\' ; 
 pathCurr = pwd ;
 cd(vidPath)
 
 % which camera files to rename
-filePrefixArray =  {'xy', 'xz', 'yz'} ;
+filePrefixArray =  {'yz'} ; % {'xy', 'xz', 'yz'} ; % {'xy', 'xz', 'yz'} ;
 % which file types to rename
 fileExtensionArray = {'.xml', '.cin'} ;
 
+% keyboard
+
 % define the start, end, and shift number for the movie files you'd like to
 % rename
-startInd = 0 ; 
-endInd = 8 ; 
-deltaInd = +42 ;
+startInd = 21 ; 
+endInd = 201 ; 
+deltaInd = -2 ;
 % used to prevent overwriting
 backwardsFlag = false ; 
 

@@ -18,27 +18,48 @@
 %       -data = structure containing the results of the hull reconstruction
 %       analysis
 %--------------------------------------------------------------------------
-function data = flyAnalysisMain(MovNum, ExprNum, pathStruct, clustFlag)
+function data = flyAnalysisMain(MovNum, ExprNum, pathStruct, clustFlag, ...
+    largePertFlag, removeLegsFlag, stopWingsFlag, samReconFlag)
 %--------------------------------------------------------------------------
 %% inputs and parameters
-if ~exist('clustFlag','var')
+% which vertsion of analysis script to run
+if ~exist('clustFlag','var') || isempty(clustFlag)
     clustFlag = false ;
 end
+% should we use calculations for extreme perturbations?
+if ~exist('largePertFlag','var') || isempty(largePertFlag)
+    largePertFlag = false ;
+end
+% should we remove the legs when using binary threshold (could affect the
+% correspondence between extremal points in different views of the fly)
+if ~exist('removeLegsFlag','var') || isempty(removeLegsFlag)
+    removeLegsFlag = true ;
+end
+% should we use calculations for cases where wings stop moving?
+% (if not, then e.g. i2 activation can mess up binaryThreshold)
+if ~exist('stopWingsFlag','var') || isempty(stopWingsFlag)
+    stopWingsFlag = false ;
+end
+% should we use newer (less tested) version of hull reconstruction?
+if ~exist('samReconFlag','var') || isempty(samReconFlag)
+    samReconFlag = false ;
+end
+
+tic
+% try to align images to avoid clipping?
+alignBBoxFlag = false ; 
 
 % these will be updated later depending on whether or not an error or false
 % trigger occurs
 falseTriggerFlag = false ;
 errorFlag = false ;
 
-% should we use calculations for extreme perturbations?
-largePertFlag = true ; 
-
 % make and/or save figures?
 plotHullFlag = false ; 
 saveHullFigFlag = false ; 
 
 % save analysis bits along the way?
-savePointFlag = true ; 
+savePointFlag = false ; 
 
 % root path to data directory
 rootPath = pathStruct.root ;
@@ -67,16 +88,34 @@ calibrationPath = pathStruct.calibration ;
 errorPath = [rootPath 'errorlog.txt'] ;
 possibleFTPath = pathStruct.possibleFT ;
 
+% -----------------------------------------------------------
 % get names for cine and xml (meta data) files
-cinFilenames = cell(1,3) ;
-cinFilenames{XY} = [dataPath strcat('\xy_',movNumStr,'.cin')] ;
-cinFilenames{XZ} = [dataPath strcat('\xz_',movNumStr,'.cin')] ;
-cinFilenames{YZ} = [dataPath strcat('\yz_',movNumStr,'.cin')] ;
-xmlFilenames = cell(1,3) ;
-xmlFilenames{XY} = [dataPath strcat('\xy_',movNumStr,'.xml')] ;
-xmlFilenames{XZ} = [dataPath strcat('\xz_',movNumStr,'.xml')] ;
-xmlFilenames{YZ} = [dataPath strcat('\yz_',movNumStr,'.xml')] ;
+cDir = dir(fullfile(dataPath, ['*_' movNumStr '.cin*'])) ; 
+xDir = dir(fullfile(dataPath, ['*_' movNumStr '.xml'])) ; 
 
+% check to make sure that files exist
+if (length(cDir) < 3)
+    fprintf('Could not find movie files for %s -- skipping \n', movNumStr)
+    data = struct() ; 
+    return
+end
+% initialize cell arrays to store cine and xml file names
+cinFilenames = cell(1,3) ;
+xmlFilenames = cell(1,3) ;
+cam_prefixes = {'yz', 'xz', 'xy'} ; 
+
+% loop over cameras to fill cell arrays
+for camNum = [XY, XZ, YZ]
+    % index and filename for movie
+    c_ind = contains({cDir.name}, cam_prefixes{camNum}) ; 
+    cinFilenames{camNum} = fullfile(cDir(c_ind).folder, cDir(c_ind).name) ; %[dataPath strcat('\xy_',movNumStr, movFileExt)] ;
+    
+    % index and filename for xml
+    x_ind = contains({xDir.name}, cam_prefixes{camNum}) ; 
+    xmlFilenames{camNum} = fullfile(xDir(x_ind).folder, xDir(x_ind).name) ;
+end
+
+% ------------------------------------------------------------
 % create folder for analysis results of current movie
 prefixStr = ['Expr_' num2str(ExprNum) '_mov_' movNumStr ];
 resultsPath = fullfile(savePath, prefixStr) ;
@@ -87,26 +126,49 @@ hullFigPath = fullfile(resultsPath,'figs') ;
 mkdir(hullFigPath);
 
 % define paths for camera calibration data
-DLT_matrix_CSV_filename = [calibrationPath '\calibration_dltCoefs.csv'] ;
-easyWandData_filename = [calibrationPath '\calibration_easyWandData.mat'] ;
+DLT_matrix_CSV_filename = fullfile(calibrationPath,...
+    'calibration_dltCoefs.csv') ;
+easyWandData_filename = fullfile(calibrationPath,...
+    'calibration_easyWandData.mat') ;
 
 % load calibration data
-dlt_matrix = load(DLT_matrix_CSV_filename) ; % CSV
-load(easyWandData_filename); % contains easyWandData
+try
+    dlt_matrix = load(DLT_matrix_CSV_filename) ; % CSV
+    load(easyWandData_filename); % contains easyWandData
+catch exception
+    disp(getReport(exception, 'basic')) 
+end
+
+% try to delete easyWand window if it pops up
 set(0, 'ShowHiddenHandles', 'on')
-close 'easyWand 5'
+try
+    close 'easyWand 5'
+catch
+    disp('No easy wand window')
+end
 
 % define filename to save results to
 resultsFileName = [prefixStr '_results'] ;
+
+% % ------------------------------------------
+% %% start parallel pool
+% if max(size(gcp)) == 0 % parallel pool needed
+%     parpool % create the parallel pool
+% end
 
 %--------------------------------------------------------------------------
 %% run full analysis
 try
     % main analysis script
-    if clustFlag
-        run flyAnalysisScriptClust
+    if samReconFlag
+        run flyAnalysisScriptSam
     else
-        run flyAnalysisScript
+        if clustFlag
+            run flyAnalysisScriptClust
+            % run flyAnalysisScriptClustPool
+        else
+            run flyAnalysisScript
+        end
     end
     
     % if false trigger is detected (i.e. no flies in view):
@@ -166,5 +228,5 @@ fclose(fileID) ;
 %% move analysis folder to appropriate directory
 movefile(resultsPath, pathStruct.unsorted) ;
 
-
+toc
 end

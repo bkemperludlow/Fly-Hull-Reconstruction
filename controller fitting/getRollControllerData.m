@@ -22,17 +22,51 @@ manualCorrRange = manualCorrRangeMS / 1000 ;
 
 %-------------------------------------------
 % read in data
-phir_amp_t = data.phir_amp_t ;
-phil_amp_t = data.phil_amp_t ;
-phiR_amp = data.phiR_amp ;
-phiL_amp = data.phiL_amp ;
+% phir_amp_t = data.phir_amp_t ;
+% phil_amp_t = data.phil_amp_t ;
+% phiR_amp = data.phiR_amp ;
+% phiL_amp = data.phiL_amp ;
 bodyRoll = data.anglesLabFrame(:,RHO) ;
 t = (data.params.startTrackingTime : data.params.endTrackingTime ) / 8000 ;
-%fwdFlipTimesR = data.fwdFlipTimesR ; 
-%backFlipTimesR = data.backFlipTimesR ; 
+fwdFlipTimesR = data.fwdFlipTimesR ; 
+backFlipTimesR = data.backFlipTimesR ; 
+fwdFlipTimesL = data.fwdFlipTimesL ; 
+backFlipTimesL = data.backFlipTimesL ; 
+
+% match up flip times
+[fwdFlipTimesR, fwdFlipTimesL] = alignFlipTimes(fwdFlipTimesR, fwdFlipTimesL) ; 
+[backFlipTimesR, backFlipTimesL] = alignFlipTimes(backFlipTimesR, backFlipTimesL) ; 
+% ------------------------------------------
+%% re-calculate stroke amplitude
+% get smoothed wing angles
+[~, smoothAnglesR, ~, ~, ~ ] = smoothWingAngles(data, 'R') ;
+[~, smoothAnglesL, ~, ~, ~ ] = smoothWingAngles(data, 'L') ;
+
+c_phiR = fit(t', smoothAnglesR(1,:)','cubicinterp') ; 
+c_phiL = fit(t', smoothAnglesL(1,:)','cubicinterp') ; 
+
+% -------------------------------------------------------
+% calculate stroke amp using smoothed angles (right wing)
+phir_t  = [fwdFlipTimesR; backFlipTimesR] ;
+phir_atFlip = c_phiR(phir_t) ; 
+rmat = [phir_t, phir_atFlip] ; 
+rmat = sortrows(rmat,1) ;
+
+phiR_amp = abs(diff(rmat(:,2))) ;
+phir_amp_t = rmat(1:end-1,1) + diff(rmat(:,1))/2 ;
+
+% -------------------------------------------------------
+% calculate stroke amp using smoothed angles (left wing)
+phil_t  = [fwdFlipTimesL; backFlipTimesL] ;
+phil_atFlip = c_phiL(phil_t) ; 
+lmat = [phil_t, phil_atFlip] ; 
+lmat = sortrows(lmat,1) ;
+
+phiL_amp = abs(diff(lmat(:,2))) ;
+phil_amp_t = lmat(1:end-1,1) + diff(lmat(:,1))/2 ;
 
 %-------------------------------------------
-% restrict time window
+%% restrict time window
 correctedIndR = find(phir_amp_t > manualCorrRange(1) & ...
     phir_amp_t < manualCorrRange(2)) ;
 correctedIndL = find(phil_amp_t > manualCorrRange(1) & ...
@@ -47,39 +81,17 @@ phiL_amp = phiL_amp(correctedIndL) ;
 % low pass filter for body roll angle
 roll_filt = filterEulerAngle(bodyRoll,smoothingParams.roll_filt_lvl) ;
 c_roll = fit(t',roll_filt,'cubicinterp');
-
-%-------------------------------------------
-% this doesn't really make sense here...
-if isfield(data,'oneWing') && strcmp(data.oneWing,'L')
-    phiR_amp = phiL_amp ; 
-    phir_amp_t = phil_amp_t ;
-elseif isfield(data,'oneWing') && strcmp(data.oneWing,'R')
-    phiL_amp = phiR_amp ; 
-    phil_amp_t = phir_amp_t ;
-end
     
 %-------------------------------------------
 % correct for different array lengths
-if length(phir_amp_t) == length(phil_amp_t)
-    phiAmpDiff = phiR_amp - phiL_amp ;
-    phiAmpTimes = (phil_amp_t + phir_amp_t ) /2 ;
-elseif length(phir_amp_t) < length(phil_amp_t)
-    idx = zeros(length(phir_amp_t),1) ;
-    for q = 1:length(phir_amp_t)
-        [~,minInd] = min(abs(phil_amp_t - phir_amp_t(q))) ; 
-        idx(q) = minInd ;
-    end
-    phiAmpTimes = (phir_amp_t + phil_amp_t(idx)) / 2 ;
-    phiAmpDiff = (phiR_amp - phiL_amp(idx)) / 2 ;
-elseif length(phil_amp_t) < length(phir_amp_t)
-    idx = zeros(length(phil_amp_t),1) ;
-    for q = 1:length(phil_amp_t)
-        [~,minInd] = min(abs(phir_amp_t - phil_amp_t(q))) ; 
-        idx(q) = minInd ;
-    end
-    phiAmpTimes = (phir_amp_t(idx) + phil_amp_t) / 2 ;
-    phiAmpDiff = (phiR_amp(idx) - phiL_amp) / 2 ;
-end
+[phir_amp_t, phil_amp_t, R_idx, L_idx] = ...
+    alignFlipTimes(phir_amp_t, phil_amp_t) ; 
+phiR_amp = phiR_amp(R_idx) ; 
+phiL_amp = phiL_amp(L_idx) ;
+
+% average times and get amp difference
+phiAmpTimes = (phil_amp_t + phir_amp_t)./2 ; 
+phiAmpDiff = phiR_amp - phiL_amp ; 
 
 %--------------------------------------------------------------------------
 % make plot to test data?
@@ -120,5 +132,35 @@ end
 
 phiAmpTimes = phiAmpTimes' ; 
 phiAmpDiff = phiAmpDiff' ; 
+
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% helper functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ------------------------------------------------------------
+% solve assignment problem for wing flip times
+function [timesR_out, timesL_out, R_idx, L_idx] = ...
+    alignFlipTimes(timesR, timesL, noMatchCost) 
+% if not given, provide cost for not matching (note, here we're using
+% seconds)
+if ~exist('noMatchCost','var') || isempty(moMatchCost)
+    noMatchCost = 1e-3 ; 
+end
+
+% make sure the time entries are in column form 
+if (size(timesR,1) < size(timesR,2))
+    timesR = timesR' ; 
+    timesL = timesL' ; 
+end
+
+% calculate distances between all cut off times and solve matching problem
+distMat = pdist2(timesR, timesL) ; 
+M = matchpairs(distMat, noMatchCost) ;
+R_idx = M(:,1) ; 
+L_idx = M(:,2) ; 
+timesR_out = timesR(R_idx) ; 
+timesL_out = timesL(L_idx) ; 
+
 
 end

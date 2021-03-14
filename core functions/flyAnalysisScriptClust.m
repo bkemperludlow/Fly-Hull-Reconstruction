@@ -33,14 +33,15 @@ allYcm = cell(1,3) ;
 allTin  = zeros(3,1) ;
 allTout = zeros(3,1) ;
 
-movieNum = cinFilenames{1}(length(cinFilenames{1})-6:length(cinFilenames{1})-4) ;
+movieNum = movNumStr ;
 
 tic;
 disp('Finding background images...')
 
 for cam = 1:3 
     try
-        [bg, tin_curr, tout_curr, xcm_curr, ycm_curr] = findBG_MOG_mk3(cinFilenames{cam}); % finds background here.
+        [bg, tin_curr, tout_curr, xcm_curr, ycm_curr] = ...
+            findBG_MOG_mk3(cinFilenames{cam}); % finds background here.
     catch exception
         msg = strcat('Error finding background for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
         msg = strcat(msg, ': ', getReport(exception, 'basic')) ;
@@ -69,6 +70,19 @@ for cam = 1:3
     allTout(cam) = tout_curr ;    
 end
 
+%-----------------------------
+% test background?
+%{ 
+figure ; 
+for file_num = 1:3
+    subplot(1,3,file_num)
+    imshow(allBGcell{file_num})
+    [~, fn_temp, ~] = fileparts(cinFilenames{file_num}) ;
+    title(fn_temp,'Interpreter','none')
+end
+%}
+%---------------------------------------------
+
 regtime = toc ;
 disp('Done finding background images...') ;
 
@@ -92,8 +106,11 @@ disp('Doing binary thresholds...')
 cam = XY ;
 %jobXY = batch('binaryThreshold',7,{squeeze(allBG(cam,:,:)), cinFilenames{cam}, tin, tout, twoFlies_xy, allXcm{cam}, allYcm{cam}}) ;
 try
-    [all_fly_bw_xy, body_only_bw_xy, all_fly_thresholds_xy, xcm_xy, ycm_xy, allAxlim_xy, DELTA] = ...
-        binaryThreshold( squeeze(allBG(cam,:,:)) , cinFilenames{cam}, tin, tout,twoFlies_xy, allXcm{cam}, allYcm{cam}) ;
+    [all_fly_bw_xy, body_only_bw_xy, all_fly_thresholds_xy, xcm_xy, ycm_xy,...
+        allAxlim_xy, DELTA, with_legs_bw_xy] = ...
+        binaryThreshold( squeeze(allBG(cam,:,:)) , cinFilenames{cam}, tin,...
+         tout,twoFlies_xy, allXcm{cam}, allYcm{cam}, removeLegsFlag, ...
+         stopWingsFlag) ;
 catch exception
     msg = strcat('Error doing xy binary threshold for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
     msg = strcat(msg, ': ', getReport(exception, 'basic')) ;
@@ -108,8 +125,11 @@ end
 cam = XZ ;
 %jobXZ = batch('binaryThreshold',7,{squeeze(allBG(cam,:,:)), cinFilenames{cam}, tin, tout, twoFlies_xz, allXcm{cam}, allYcm{cam}}) ;
 try
-    [all_fly_bw_xz, body_only_bw_xz, all_fly_thresholds_xz, xcm_xz, ycm_xz, allAxlim_xz, DELTA] = ...
-        binaryThreshold( squeeze(allBG(cam,:,:)) , cinFilenames{cam}, tin, tout,twoFlies_xz, allXcm{cam}, allYcm{cam}) ;
+    [all_fly_bw_xz, body_only_bw_xz, all_fly_thresholds_xz, xcm_xz, ycm_xz,...
+        allAxlim_xz, DELTA, with_legs_bw_xz] = ...
+        binaryThreshold( squeeze(allBG(cam,:,:)) , cinFilenames{cam}, tin,...
+         tout,twoFlies_xz, allXcm{cam}, allYcm{cam}, removeLegsFlag, ...
+         stopWingsFlag) ;
 catch exception
     msg = strcat('Error doing xz binary threshold for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
     msg = strcat(msg, ': ', getReport(exception, 'basic')) ;
@@ -123,8 +143,11 @@ end
 cam = YZ ;
 %jobYZ = batch('binaryThreshold',7,{squeeze(allBG(cam,:,:)), cinFilenames{cam}, tin, tout, twoFlies_yz, allXcm{cam}, allYcm{cam}}) ;
 try
-    [all_fly_bw_yz, body_only_bw_yz, all_fly_thresholds_yz, xcm_yz, ycm_yz, allAxlim_yz, DELTA] = ...
-        binaryThreshold( squeeze(allBG(cam,:,:)) , cinFilenames{cam}, tin, tout,twoFlies_yz, allXcm{cam}, allYcm{cam}) ;
+    [all_fly_bw_yz, body_only_bw_yz, all_fly_thresholds_yz, xcm_yz, ycm_yz,...
+        allAxlim_yz, DELTA, with_legs_bw_yz] = ...
+        binaryThreshold( squeeze(allBG(cam,:,:)) , cinFilenames{cam}, tin,...
+         tout,twoFlies_yz, allXcm{cam}, allYcm{cam}, removeLegsFlag, ...
+         stopWingsFlag) ;
 catch exception
     msg = strcat('Error doing yz binary threshold for movie ', movieNum) ;%cinFilenames{cam}(length(cinFilenames{cam})-6:length(cinFilenames{cam})-4)) ;
     msg = strcat(msg, ': ', getReport(exception, 'basic')) ;
@@ -209,6 +232,44 @@ for k=1:Nimages
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
     body_only_bw.mat(ind1vec, ind2vec) = getImage4D(body_only_bw_yz, 1, i2+DELTA) ;   
 end
+
+if isfield(with_legs_bw_xy, 'dim')
+    dim = with_legs_bw_xy.dim ;
+    newdim = dim ;
+    % newdim(1) = dim(1) - 2*DELTA ;
+    % newdim(2) = 3 ; % three cams
+    newdim(2) = dim(2) - 2*DELTA ;
+    newdim(1) = 3 ; % three cams
+    
+    with_legs_bw = init4D(newdim) ;
+    % Nimages = newdim(1) ;
+    Nimages = newdim(2) ;
+    for k=1:Nimages
+        % combine XY
+        i1=XY ; i2=k ;
+        ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
+        ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
+        with_legs_bw.mat(ind1vec, ind2vec) = ...
+            getImage4D(with_legs_bw_xy, 1, i2+DELTA) ;
+        
+        % combine XZ
+        i1=XZ ; i2=k ;
+        ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
+        ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
+        with_legs_bw.mat(ind1vec, ind2vec) = ...
+            getImage4D(with_legs_bw_xz, 1, i2+DELTA) ;
+        
+        % combine YZ
+        i1=YZ ; i2=k ;
+        ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
+        ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
+        with_legs_bw.mat(ind1vec, ind2vec) = ...
+            getImage4D(with_legs_bw_yz, 1, i2+DELTA) ;
+    end
+else
+    with_legs_bw = [] ;
+end
+
 disp(['Done combining for movie ' movieNum])
 
 %--------------------------------------------------------------------------
@@ -265,32 +326,35 @@ if savePointFlag
     'all_fly_thresholds_xy',  'xcm_xy', 'ycm_xy', 'allAxlim_xy', 'DELTA', ...
     'all_fly_bw_xz', 'body_only_bw_xz', 'all_fly_thresholds_xz', 'xcm_xz',...
     'ycm_xz', 'allAxlim_xz', 'all_fly_bw_yz', 'body_only_bw_yz', ...
-    'all_fly_thresholds_yz', 'xcm_yz', 'ycm_yz', 'allAxlim_yz')
+    'all_fly_thresholds_yz', 'xcm_yz', 'ycm_yz', 'allAxlim_yz', ...
+    'with_legs_bw_xy', 'with_legs_bw_xz', 'with_legs_bw_yz', 'all_fly_bw',...
+    'body_only_bw', 'with_legs_bw', 'params', 'easyWandData')
 end
 %% VIZ body vs. whole fly featuring
 % ---------------------------------
-% figure('position',[ 94   584   560   160]);
-% 
-% ww = [-1 1 -1 1] * 48  ;
-% 
-% for k=1:Nimages
-%     for cam=1:3
-%         fly = getImage4D(all_fly_bw,cam,k) ;
-%         bod = getImage4D(body_only_bw, cam,k) ;
-%         rgb = zeros(512,512,3,'uint8') ;        
-%         rgb(:,:,1) = uint8(bod)*255 ; 
-%         rgb(:,:,2) = uint8(fly)*255 ; 
-%         subplot(1,3,cam) ; 
-%         imshow(rgb) ;
-%         xc = squeeze(CM_pos(cam,k,1)) ;
-%         yc = squeeze(CM_pos(cam,k,2)) ;
-%         axis([xc xc yc yc]+ww) ;
-%     end
-%     title(k) ;
-%     %saveas(gcf,['.\tmp\featuring_' num2str(k) '.png']) ;
-%     pause (0.05);
-% end
+%{
+figure('position',[ 94   584   560   160]);
 
+ww = [-1 1 -1 1] * 48  ;
+
+for k=1:Nimages
+    for cam=1:3
+        fly = getImage4D(all_fly_bw,cam,k) ;
+        bod = getImage4D(body_only_bw, cam,k) ;
+        rgb = zeros(512,512,3,'uint8') ;        
+        rgb(:,:,1) = uint8(bod)*255 ; 
+        rgb(:,:,2) = uint8(fly)*255 ; 
+        subplot(1,3,cam) ; 
+        imshow(rgb) ;
+        xc = squeeze(CM_pos(cam,k,1)) ;
+        yc = squeeze(CM_pos(cam,k,2)) ;
+        axis([xc xc yc yc]+ww) ;
+    end
+    title(k) ;
+    %saveas(gcf,['.\tmp\featuring_' num2str(k) '.png']) ;
+    pause (0.05);
+end
+%}
 %--------------------------------------------------------------------------
 %% NEW 3D RECONSTRUCTION
 %--------------------------------------------------------------------------
@@ -375,7 +439,8 @@ savePathFull = fullfile(savePath, prefixStr, [resultsFileName '.mat']) ;
 save(savePathFull, 'data', 'bodyRes', 'bodyFrameStartInd', 'bodyFrameEndInd', ...
     'wing1Res', 'wing1FrameStartInd', 'wing1FrameEndInd', ...
     'wing2Res', 'wing2FrameStartInd', 'wing2FrameEndInd', 'mergedWingsFlag', ...
-    'params',  'CM_pos', 'all_fly_bw', 'body_only_bw',  'dlt_matrix', 'easyWandData', ...
+    'params',  'CM_pos', 'all_fly_bw', 'body_only_bw', 'with_legs_bw',...
+    'dlt_matrix', 'easyWandData', ...
     'cinFilenames', 'allBG', 'Nimages', 'all_fly_bw_xy',  'body_only_bw_xy',...
     'all_fly_thresholds_xy',  'xcm_xy', 'ycm_xy', 'allAxlim_xy', 'DELTA', ...
     'all_fly_bw_xz', 'body_only_bw_xz', 'all_fly_thresholds_xz', 'xcm_xz',...

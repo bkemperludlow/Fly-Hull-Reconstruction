@@ -15,7 +15,7 @@
 % calcEta
 %--------------------------------------------------------------------------
 function [anglesLabFrame, anglesBodyFrame, t, newEtaLab, newEtaBody, sp_rho,...
-    smoothed_rho, rho_t, rho_samp] = ...
+    smoothed_rho, rho_t, rho_samp, rotM_YP, rotM_roll, largePertFlag] = ...
     calcAnglesRaw_Sam(data, plotFlag,largePertFlag)
 %--------------------------------------------------------------------------
 %% params and inputs
@@ -36,8 +36,8 @@ thetaB0 = 45 ;
 thetaB0rad = thetaB0 * pi / 180 ;
 
 % misc useful params
-deg2rad = pi / 180 ;
-rad2deg   = 180 / pi ;
+DEG2RAD = pi / 180 ;
+RAD2DEG   = 180 / pi ;
 tol = 1e-12 ;
 fps = data.params.fps ;
 
@@ -79,7 +79,8 @@ allT   = allT / data.params.fps ; % in SEC
 if largePertFlag
     % in cases where gimbal lock may be a problem, use a frame-by_frame
     % estimate for the body pitch and yaw angles
-    [rawBeta, rawPsi, rotM_YP] = calcPitchLargePert(data, plotFlag) ;
+    [rawBeta, rawPsi, rotM_YP, largePertFlag] = ...
+        calcPitchLargePert(data, plotFlag) ;
 else
     % otherwise proceed as normal
     rawPsi  = zeros(data.Nimages,1) ; % yaw
@@ -92,8 +93,8 @@ else
         rotM_YP(:,:,k) = eulerRotationMatrix(rawPsi(k), rawBeta(k),0) ; 
     end
     % convert rawPsi and rawBeta to degrees
-    rawPsi = rad2deg*rawPsi ; 
-    rawBeta = rad2deg*rawBeta ; 
+    rawPsi = RAD2DEG*rawPsi ; 
+    rawBeta = RAD2DEG*rawBeta ; 
 end
 % -------------------------------------------------------------------------
 %% calculate body roll
@@ -108,14 +109,15 @@ else
     rhoFlag = true ;
 end
 
-if rhoFlag && isfield(data,'newRhoSamp')
-    % this assumes that the roll angle was already estimated in the script
-    % for large perturbation corrections
-    [smoothed_rho, sp_rho, rho_t, rho_samp] = calcRollLargePert(data,t) ; 
-elseif rhoFlag && ~isfield(data,'newRhoSamp')
+if rhoFlag && isfield(data, 'newRhoSamp')
+    % if possible, uses 'newRhoSamp', estimated in the script for large 
+    % perturbation corrections
+    [smoothed_rho, sp_rho, rho_t, rho_samp] = calcRollNewRhoSamp(data,t) ; 
+elseif rhoFlag && ~isfield(data, 'newRhoSamp')
     % if we have estimates of roll vector, determine body roll angle
-    [smoothed_rho, sp_rho, rho_t, rho_samp] = ...
-        calcBodyRoll(rhoTimes, rollVectors, t, rotM_YP, data.params) ;
+    [smoothed_rho, sp_rho, rho_t, rho_samp, rotM_roll] = ...
+        calcBodyRoll(rhoTimes, rollVectors, t, rotM_YP, data.params,...
+         largePertFlag) ;
 else
     smoothed_rho = rho0 ;
     sp_rho = [] ;
@@ -160,12 +162,12 @@ for k=1:data.Nimages
     betaDeg = rawBeta(k) ;
     
     % right wing
-    phiRdeg   = atan2(rightSpanHat(2),rightSpanHat(1)) * rad2deg ;
-    thetaRdeg = asin(rightSpanHat(3)) * rad2deg;
+    phiRdeg   = atan2(rightSpanHat(2),rightSpanHat(1)) * RAD2DEG ;
+    thetaRdeg = asin(rightSpanHat(3)) * RAD2DEG;
     
     % left wing
-    phiLdeg   = atan2(leftSpanHat(2), leftSpanHat(1)) * rad2deg;
-    thetaLdeg = asin(leftSpanHat(3)) * rad2deg;
+    phiLdeg   = atan2(leftSpanHat(2), leftSpanHat(1)) * RAD2DEG;
+    thetaLdeg = asin(leftSpanHat(3)) * RAD2DEG;
     
     % store result
     anglesLabFrame(k,:) = ...
@@ -179,13 +181,16 @@ for k=1:data.Nimages
     % first rotation matrix bring (xlab, ylab, zlab) to
     % (xbody ybody zbody) such that xbody is AHat
     
-    % convert to radians
-    phiB   = psiDeg*deg2rad ;
-    thetaB = betaDeg*deg2rad ;
-    psiB   = bodyRollAngle*deg2rad ;
+%     % convert to radians
+%     phiB   = psiDeg*deg2rad ;
+%     thetaB = betaDeg*deg2rad ;
+%     psiB   = bodyRollAngle*deg2rad ;
+%     
+%     % rotation matrix to strict body axis
+%     M1 = eulerRotationMatrix(phiB,thetaB,psiB ) ;
     
     % rotation matrix to strict body axis
-    M1 = eulerRotationMatrix(phiB,thetaB,psiB ) ;
+    M1 = squeeze(rotM_roll(:,:,k)) * squeeze(rotM_YP(:,:,k)) ; 
     
     % pitch down by thetaB w.r.t body axis
     M2 = eulerRotationMatrix(0, -thetaB0rad, 0) ;
@@ -213,8 +218,8 @@ for k=1:data.Nimages
     rotChordR = M * rightChordHat ; % rotated right chord
     
     % get angles
-    phiRdeg   = unwrap(atan2(rotSpanR(2),rotSpanR(1))) * rad2deg;
-    thetaRdeg = asin(rotSpanR(3)) * rad2deg ;
+    phiRdeg   = unwrap(atan2(rotSpanR(2),rotSpanR(1))) * RAD2DEG;
+    thetaRdeg = asin(rotSpanR(3)) * RAD2DEG ;
     newEtaBody(k,1) = calcEta(rotSpanR, rotChordR,'right') ;
     etaRdeg = newEtaBody(k,1) ;
     % ---------------
@@ -225,8 +230,8 @@ for k=1:data.Nimages
     rotChordL = M * leftChordHat ; % rotated left chord
     
     % get angles
-    phiLdeg   = unwrap(atan2(rotSpanL(2),rotSpanL(1))) * rad2deg;
-    thetaLdeg = asin(rotSpanL(3)) * rad2deg ;
+    phiLdeg   = unwrap(atan2(rotSpanL(2),rotSpanL(1))) * RAD2DEG;
+    thetaLdeg = asin(rotSpanL(3)) * RAD2DEG ;
     newEtaBody(k,2) = calcEta(rotSpanL, rotChordL,'left') ;
     etaLdeg = newEtaBody(k,2) ;
     
@@ -243,8 +248,8 @@ end
 
 anglesBodyFrame(:,PHIR)   = + anglesBodyFrame(:,PHIR) ; % NOTE MINUS
 
-anglesLabFrame  = unwrap(anglesLabFrame/rad2deg) * rad2deg ;
-anglesBodyFrame = unwrap(anglesBodyFrame/rad2deg) * rad2deg ;
+anglesLabFrame  = unwrap(anglesLabFrame/RAD2DEG) * RAD2DEG ;
+anglesBodyFrame = unwrap(anglesBodyFrame/RAD2DEG) * RAD2DEG ;
 
 %--------------------------------------------------------------------------
 %% plot results?

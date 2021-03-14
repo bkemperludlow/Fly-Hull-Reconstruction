@@ -23,15 +23,17 @@ clear mat1 mat2
 % the chord
 chordRowsInd = find(distFromMidSpan<delta) ;
 
-if (isempty(chordRowsInd))
+if (numel(chordRowsInd) < 5)
     % first try a larger delta
     chordRowsInd = find(distFromMidSpan<3*delta) ;
     % check if still empty
-    if (isempty(chordRowsInd))
+    if (numel(chordRowsInd) < 5)
         %error('hullAnalysis:Chord','Bad clustering - empty right chord') ;
-        disp('Bad clustering - empty chord')
+        disp('Error: empty chord')
         chordHat = [nan, nan, nan]  ; 
         chordAltHat = [nan, nan, nan] ;
+        diag1 = nan ; 
+        diag2 = nan ; 
         return
     end
 end
@@ -71,7 +73,7 @@ vox2Ind = selectedInd(Icol) ;
 chordHat = WingVoxels(vox1Ind,:)' - WingVoxels(vox2Ind,:)' ;
 % force chord to be vertical to the span vector
 chordHat = chordHat - span.' * dot(span, chordHat) ;
-diag11 = norm(chordHat) ; % will be used later
+diag1 = norm(chordHat) ; % will be used later
 chordHat = chordHat / norm(chordHat) ;
 
 if (chordHat(3)<0)
@@ -105,7 +107,7 @@ chordAltHat = WingVoxels(indmax,:)' - WingVoxels(indmin,:)' ;
 % force alternative chord to be vertical to the span vector
 chordAltHat = chordAltHat - span.' * dot(span, chordAltHat) ;
 
-diag12 = norm(chordAltHat) ; % will be used later
+diag2 = norm(chordAltHat) ; % will be used later
 % now normalize
 chordAltHat = chordAltHat / norm(chordAltHat) ;
 
@@ -120,16 +122,13 @@ if (chordAltHat(3)<0)
     chordAltHat = - chordAltHat ;
 end
 
-
-diag1 = diag11 ;
-diag2 = diag12 ;
 % decide whether to swap the "main" and "alternative" chord vectors
 % if one of the diagonals is siginficantly longer, choose the longer
 % one and do not proceed to the velocity criterion below
 diagSwapFlag     = false ;
 velocitySwapFlag = false ;
 
-if (diag12/diag11 >= 1.3)
+if (diag2/diag1 >= 1.3)
     diagSwapFlag = true ;
     %contProcess = false ;
     %disp('swap based on large ratio') ;
@@ -137,6 +136,9 @@ end
 
 %% use wing tip 'velocity' wrt the body to refine chord estimate
 % previous version calculate wing centroid velocity:
+if all(isnan(WingTip_prev))
+    WingTip_prev = WingTip ; 
+end
 vWing =  ( WingTip - body_COM )-(WingTip_prev - prev_body_COM) ;
 % keep only the component perpendicular to the span vector
 vWing = vWing - span * dot(span.', vWing) ;

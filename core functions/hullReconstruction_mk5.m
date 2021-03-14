@@ -130,7 +130,8 @@ voxelSize           = params.voxelSize ;
 
 mergedWingsFlag     = false(Nframes, 1) ;
 % Centers=zeros(endTrackingTime-startTrackingTime+1,3);
-parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
+parfor indd= 1: (endTrackingTime-startTrackingTime+1)  %parfor
+    %tic
     %disp(indd) ;
     t = indd + startTrackingTime - 1 ;
     
@@ -320,7 +321,7 @@ parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
     mergedWingsFlag(indd) = sameMasksFlag ;
     % define sampling volume
     %V = false(Nx,Ny,Nz);
-    
+    tic
     % define voxel queue
     queue_q    = zeros(Nx*Ny*Nz,3, 'int16');
     queue_tail = 0 ;
@@ -351,7 +352,7 @@ parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
         queue_q(queue_tail,:) = seed ;        
     else % if the guess for the seed does not work
         % look in the neighbourhood
-        disp('positive seed not found in estimated c.m. position. look in the neighborhood...') ;
+        %disp('positive seed not found in estimated c.m. position. look in the neighborhood...') ;
         neighx = round(length(X)/10) ;
         neighy = round(length(Y)/10) ;
         neighz = round(length(Z)/10) ;
@@ -368,7 +369,7 @@ parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
                     if ~found   
                         found = checkVoxel([X(i2), Y(j2), Z(k2)], dlt_xz, dlt_yz, dlt_xy, imxzFly, imyzFly, imxyFly, detectorLengthPix);
                         seed = [i2, j2, k2] ;
-                        disp('found seed!') ;
+                        %disp('found seed!') ;
                     end
                 end
             end
@@ -594,6 +595,8 @@ parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
         currWing2CoordsReal(p,:) = [X(currWing2Coords(p,1)), Y(currWing2Coords(p,2)), Z(currWing2Coords(p,3))] ;
     end
     
+    %toc
+    %keyboard
     if (0)
         figure(77) ;
         set(gcf,'position',[212   400   921   565]) ; 
@@ -645,6 +648,7 @@ parfor indd=1: (endTrackingTime-startTrackingTime+1)  %parfor
         view(-71,8) ;
         %keyboard;
     end 
+    %toc
 end
 
 % calculate size to allocate for bodyRes
@@ -765,6 +769,7 @@ function [isFly, isBody, isWing1, isWing2] = checkVoxelEverything(r, dlt_xz, dlt
     imxzFly, imyzFly, imxyFly, ...
     imxzBody, imyzBody, imxyBody, ...
     imxyWing1, imxyWing2, detectorLengthPix) 
+
 
 isFly   = false ; % default values
 isBody  = false ;

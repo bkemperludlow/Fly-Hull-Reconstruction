@@ -18,10 +18,10 @@ yaw_filt_lvl = 100 ; % Hz, for low-pass filter
 
 %% body roll
 roll_filt_lvl = 200 ; % Hz, for low-pass filter
-roll_est_err = 0.025 ; % 0.25 ; % deg, for spline fit
+roll_est_err = 0.01 ; % 0.025 ; % deg, for spline fit
 
 %% body pitch
-pitch_filt_lvl = 100 ; % Hz, for low-pass filter
+pitch_filt_lvl = 100 ; % 100 % Hz, for low-pass filter
 
 %% wing stroke
 phi_est_err = 1.75 ; % degrees, estimated error for spline fit
