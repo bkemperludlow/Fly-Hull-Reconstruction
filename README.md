@@ -12,3 +12,4 @@ We ask that users of this code cite the following paper:
 Beatus, T., Guckenheimer, J. M., & Cohen, I. (2015). *Controlling roll perturbations in fruit flies*. Journal of The Royal Society Interface, 12(105), [https://doi.org/10.1098/rsif.2015.0075](https://doi.org/10.1098/rsif.2015.0075)
 
 ## Licensing
+This project is licensed under the terms of the MIT license.
