@@ -1,5 +1,5 @@
 # Fly Hull Reconstruction
-A set of MATLAB tools used to extract 3D kinematics from videos of flying fruit flies by generating 3D reconstructions of fly wings and body using multiple camera views.
+A set of MATLAB tools used to extract 3D kinematics from videos of flying fruit flies by generating 3D reconstructions of fly wings and body using multiple camera views. From the Itai Cohen Lab at Cornell University.
 
 ![Hull reconstruction demo](https://github.com/itaicohengroup/Fly-Hull-Reconstruction/blob/master/hull_reconstruction_demo.gif)
 
