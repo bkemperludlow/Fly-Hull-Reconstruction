@@ -3,7 +3,7 @@
 % experiment. 
 %
 % pathToWatch is the root folder for the experiment, e.g. :
-%       'D:\Box Sync Old\VNC Motor Lines\11_25032018\'
+%       'D:\Box Sync Old\Descending Neurons\09_06082022\'
 %--------------------------------------------------------------------------
 function pathStruct = generatePathStruct(pathToWatch)
 % -------------------------------------------------------------------------
@@ -14,15 +14,17 @@ pathStruct.save = fullfile(pathToWatch, 'Analysis') ;
 pathStruct.calibration = fullfile(pathToWatch, 'calibration') ; 
 pathStruct.errorLog = fullfile(pathToWatch, 'errorlog.txt') ;
 pathStruct.possibleFT = fullfile(pathToWatch, 'Possible False Triggers\') ; 
-pathStruct.pitchUp = fullfile(pathToWatch, 'Analysis\Pitch Up\') ; 
-pathStruct.pitchDown = fullfile(pathToWatch, 'Analysis\Pitch Down\') ; 
-pathStruct.rollRight = fullfile(pathToWatch, 'Analysis\Roll Right\') ; 
-pathStruct.rollLeft = fullfile(pathToWatch, 'Analysis\Roll Left\') ; 
-pathStruct.noPert = fullfile(pathToWatch, 'Analysis\No Perturbation\') ; 
-pathStruct.probNoPert = fullfile(pathToWatch, 'Analysis\Probably No Perturbation\') ; 
-pathStruct.undeterminedPert = fullfile(pathToWatch, 'Analysis\Undetermined Perturbation\') ;
-pathStruct.other = fullfile(pathToWatch, 'Analysis\Other\') ; 
-pathStruct.unsorted = fullfile(pathToWatch, 'Analysis\Unsorted\') ; 
+pathStruct.pitchUp = fullfile(pathToWatch, 'Analysis','Pitch Up') ; 
+pathStruct.pitchDown = fullfile(pathToWatch, 'Analysis','Pitch Down') ; 
+pathStruct.rollRight = fullfile(pathToWatch, 'Analysis', 'Roll Right') ; 
+pathStruct.rollLeft = fullfile(pathToWatch, 'Analysis', 'Roll Left') ; 
+pathStruct.noPert = fullfile(pathToWatch, 'Analysis','No Perturbation') ; 
+pathStruct.probNoPert = fullfile(pathToWatch, 'Analysis','Probably No Perturbation') ; 
+pathStruct.undeterminedPert = fullfile(pathToWatch, 'Analysis',...
+    'Undetermined Perturbation') ;
+pathStruct.other = fullfile(pathToWatch, 'Analysis', 'Other') ; 
+pathStruct.unsorted = fullfile(pathToWatch, 'Analysis','Unsorted') ; 
+pathStruct.exclude = fullfile(pathToWatch, 'Analysis','Exclude') ; 
 pathStruct.mp4 = fullfile(pathToWatch, 'mp4') ;
 
 % -------------------------------------------------------------------------
@@ -42,7 +44,7 @@ pathStruct.ExprNum = ExprNum ;
 %% create the directory folders if they don't already exist
 pathStructFields = {'root', 'save', 'possibleFT', 'pitchUp', 'pitchDown',...
     'rollRight', 'rollLeft', 'noPert', 'probNoPert','undeterminedPert',...
-    'unsorted','other','mp4'} ; 
+    'unsorted','other', 'exclude', 'mp4'} ; 
 for i = 1:length(pathStructFields)
     if ~exist(pathStruct.(pathStructFields{i}), 'dir')
         mkdir(pathStruct.(pathStructFields{i}))

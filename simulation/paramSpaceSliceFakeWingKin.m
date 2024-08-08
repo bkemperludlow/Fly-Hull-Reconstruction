@@ -5,9 +5,9 @@
 % ------------------------
 %% get/set param values
 % which parameter will we vary?
-varyParam1 = 'phi_f' ; %'omega' ;
-varyParam2 = 'phi_b' ;
-N_vals = 50 ;
+varyParam1 = 'delta_phi_f' ; % 'delta_phi_f' ; %'omega' ;
+varyParam2 = 'pitch_ang' ; % 'phi_b' % NB: can currently only vary body kin in param2
+N_vals = 51 ; % 50
 
 % define params structure
 params = defineQuasiSteadyParams() ;
@@ -30,14 +30,24 @@ plotFlag = false ;
 
 % ------------------------------------------------
 %% define ranges over which we'll test params vals
-
 omega_range = 2*pi*linspace(100, 300, N_vals) ;
 phi_f_range = (pi/180)*linspace(-10, 70, N_vals) ;
 phi_b_range = (pi/180)*linspace(100, 200, N_vals) ;
+delta_phi_f_range = (pi/180)*linspace(-25, 25, N_vals) ;
 
 span_range = (1e-3)*linspace(1, 3, N_vals) ;
 hinge_x_range = (1e-3)*linspace(0.01, 0.5, N_vals) ;
 
+% range to use for varying pitch velocity (in rad/s)
+% NB: this is a big range
+pitchVelMin = -150 ; %-60 ; % rad/s 
+pitchVelMax = 150; %  60 ;  % rad/s
+pitch_vel_range = linspace(pitchVelMin, pitchVelMax, N_vals) ; 
+
+% range to use for varying pitch angle (in radians)
+pitchAngMin = (pi/180)*0 ;  % radians
+pitchAngMax = (pi/180)*90 ; % radians
+pitch_ang_range = linspace(pitchAngMin, pitchAngMax, N_vals) ; 
 % ------------------------------------------------
 %% initialize output matrices
 F_x_all = nan(N_vals, N_vals) ;
@@ -62,12 +72,24 @@ for k = 1:N_vals
         case 'hinge_x'
             params = defineQuasiSteadyParams('r_hinge',hinge_x_range(k)) ;
             body_params(2) = params.r_hinge ;
+        case 'delta_phi_f'
+            wing_kin_params(12) = delta_phi_f_range(k) ; 
+        otherwise
+            % do nothing -- as in the case when we want to vary body pitch
+            % velocity
+            
     end
     
     % -------------------------------------
     %% loop over 2nd param vals
     for m = 1:N_vals
-        % get current value of 2nd param
+        % since we might vary pitch angle/velocity, create an array of 
+        % zeros for that now (which we can overwrite if we're in the 
+        % correct case)
+        pitch_vel_curr = 0 ;
+        pitch_ang_curr = thetaB0 ;
+        % --------------------------------------
+        %% get current value of 2nd param
         switch varyParam2
             case 'omega'
                 wing_kin_params(1) = omega_range(m) ;
@@ -84,24 +106,43 @@ for k = 1:N_vals
                 params = defineQuasiSteadyParams('span', params.span, ...
                     'r_hinge',hinge_x_range(m)) ;
                 body_params(2) = params.r_hinge ;
+            case 'delta_phi_f'
+                wing_kin_params(12) = delta_phi_f_range(k) ; 
+            case 'pitch_vel'
+                % assign body pitch velocity 
+                % NB: this is sort of crude, since we're not varying the
+                % body angle in accordance with the pitch velocity;
+                % however, it should still be a good approximation?
+                pitch_vel_curr = pitch_vel_range(m) ; 
+            case 'pitch_ang'
+                % assign body pitch angle
+                pitch_ang_curr = pitch_ang_range(m) ; 
         end
+        
         % -------------------------------------------
         %% get time range (one wingbeat)
         omega = wing_kin_params(1) ;
         ti = 0 ;
         tf = (2*pi)/omega ;
         t = linspace(ti, tf, 100) ;
+        dt = mean(diff(t)) ; 
         
         % shift so that we start at beginning of downstroke
         t_shift = (pi/2)/omega ;
         t = t + t_shift ;
         
-        % ------------------------------------------------
-        %% no body movement here, so set to zero
+         % -------------------------------------------------------------
+        %% body movement -- set to zero unless we're varying pitch vel
         velBodyBody = zeros(length(t),3) ;
         bodyYPR = zeros(length(t),3) ;
-        bodyYPR(:,2) = thetaB0.*ones(length(t),1) ; % set steady pitch
+        bodyYPR(:,2) = pitch_ang_curr.*ones(length(t),1) ; % set steady pitch (should default to thetaB0 unless we're intentionally adjusting it)
         bodyYPR_dot = zeros(length(t),3) ;
+        
+        % set pitch velocity (probably zero, unless we're varying it)
+        bodyYPR_dot(:,2) = repmat(pitch_vel_curr, length(t),1) ; 
+        
+%         % try to adjust the body pitch angle accordingly?
+%         bodyYPR(:,2) = bodyYPR(1,2) + dt.*cumsum(bodyYPR_dot(:,2)) ; 
         
         % ------------------------------------------------
         %% calculate force and torque
@@ -179,12 +220,17 @@ switch varyParam1
     case 'phi_b'
         y = (180/pi).*phi_b_range ;
         y_label = '\phi_b (deg)' ;
+    case 'delta_phi_f'
+        y = delta_phi_f_range ;
+        y_label = '\Delta\phi_f (rad)' ;
     case 'span'
         y = span_range ;
         y_label = 'span (m)' ;
     case 'hinge_x'
         y = hinge_x_range ;
         y_label = 'hinge x (m)' ;
+    otherwise
+        keyboard
 end
 switch varyParam2
     case 'omega'
@@ -196,12 +242,21 @@ switch varyParam2
     case 'phi_b'
         x = (180/pi).*phi_b_range ;
         x_label = '\phi_b (deg)' ;
+    case 'delta_phi_f'
+        x = delta_phi_f_range ;
+        x_label = '\Delta\phi_f (rad)' ;
     case 'span'
         x = span_range ;
         x_label = 'span (m)' ;
     case 'hinge_x'
         x = hinge_x_range ;
         x_label = 'hinge x (m)' ;
+    case 'pitch_vel'
+        x = pitch_vel_range ; 
+        x_label = 'pitch vel. (rad/s)' ; 
+    case 'pitch_ang'
+        x = pitch_ang_range ; 
+        x_label = 'pitch angle (rad)' ; 
 end
 
 % ------------------
@@ -255,6 +310,49 @@ title('T_y')
 ylabel(y_label) 
 xlabel(x_label)
 
+% ------------------
+% T_y SURFACE PLOT
+% ------------------
+[xx, yy] = meshgrid(x, y) ; 
+h_y_surf = figure ; 
+hold on
+
+% % make surface plot
+% s = surf(xx, yy, T_y_all, 'EdgeColor','none', 'FaceColor','interp') ;
+% 
+% % set colorbar properties
+% val_max = nanmax(abs(T_y_all(:))) ; 
+% caxis(val_max.*[-1, 1])
+% colormap(brewermap([],'RdBu')) ; 
+% colorbar
+
+plot3(xx(:), yy(:), T_y_all(:), 'k.','MarkerFaceColor','none','MarkerSize',8)
+
+% axis labels
+zlabel('T_y')
+ylabel(y_label) 
+xlabel(x_label)
+
+% try to perform fit to surface? (polynomial model)
+sf = fit([xx(:), yy(:)], T_y_all(:), 'poly22') ; 
+sfit_plot = surf(xx, yy, sf(xx,yy), 'EdgeColor','none', ...
+    'FaceColor','interp') ; 
+
+% set colorbar properties
+val_max = nanmax(abs(T_y_all(:))) ; 
+caxis(val_max.*[-1, 1])
+colormap(brewermap([],'RdBu')) ; 
+colorbar
+
+% turn on 3d rotation
+rotate3d on
+
+% get tangent to plane at x = y = 0 
+[fx, fy] = differentiate(sf, [0,0]) ; 
+
+% for param1 = delta_phi_front and param2 = pitch_vel, get
+% fx = 0.0018 ; 
+% fy = (180/pi)*0.0287 ;  % NB: this fy is for deltaPhiFront in degrees 
 
 % % --------------
 % % summed force

@@ -104,17 +104,29 @@ for i = 1:length(ExprNums)
     
     % copy over folders/files
     for j = 1:length(suffix_cell)
-        try
-            sourceCurr = fullfile(sourceDir(exprInd).folder, ...
-                sourceDir(exprInd).name, suffix_cell{j}) ;
-            destCurr = fullfile(destFolder, suffix_cell{j}) ;
-            [status, msg] = copyfile(sourceCurr, destCurr) ;
-            disp(['Successfully copied ' sourceCurr])
-        catch
-            disp(['failed to copy ' sourceCurr])
-            continue
+        % make parent directories, if needed
+        suffix_split = strsplit(suffix_cell{j},'\') ;
+        if length(suffix_split) > 1
+            newFolder = fullfile(destFolder, ...
+                strjoin(suffix_split(1:end-1),'\')) ;
+            if ~exist(newFolder,'dir')
+               mkdir(newFolder) 
+            end
         end
-    end
-      
+        
+        % try to transfer data
+        sourceCurr = fullfile(sourceDir(exprInd).folder, ...
+            sourceDir(exprInd).name, suffix_cell{j}) ;
+        destCurr = fullfile(destFolder, suffix_cell{j}) ;
+        [status, msg] = copyfile(sourceCurr, destCurr) ;
+        
+        % print out whether or not it worked
+        if status
+            fprintf('Successfully copied %s \n', sourceCurr)
+        else
+            fprintf('Failed to copy %s \n', sourceCurr)
+            disp(msg)
+        end
+    end 
 end
 end

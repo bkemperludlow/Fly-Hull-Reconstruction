@@ -5,10 +5,10 @@
 plotFlag = true ;       % plot results?
 
 controlFlag = true ;   % use PI control?
-pertFlag = false ;      % apply perturbation
+pertFlag = true ;      % apply perturbation
 
 % time range (in wingbeats)
-t_wb = (-30:10)' ;
+t_wb = (-20:40)' ;
 
 % general params
 params = defineQuasiSteadyParams ;
@@ -69,7 +69,7 @@ if plotFlag
     
     % plot locations colored by pitch angle
     scatter(1000.*x_lab, 1000.*z_lab, [], thetaB, 'o', 'filled')
-    phasemap
+    % phasemap
     
     % axis properties
     axis tight
@@ -127,7 +127,7 @@ if plotFlag
     
     yyaxis right
     plot(t_wb, (180/pi).*thetaB, '-')
-    
+    ylabel('Body Pitch Angle (deg)')
     axis tight
     xlabel('Time (wb)') 
     

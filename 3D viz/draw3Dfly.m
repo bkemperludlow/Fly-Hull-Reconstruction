@@ -1,6 +1,6 @@
 
 function [flyGrp, bodyGrp, rightWingGrp, leftWingGrp, dL, rightWingTip, leftWingTip ] = ....
-    draw3Dfly_v3(ax, scale, resolution, pinType, thetab0, gridFlag, colorScheme) %#ok<INUSD>
+    draw3Dfly(ax, scale, resolution, pinType, thetab0, gridFlag, colorScheme) %#ok<INUSD>
 
 if ~exist('gridFlag','var') || isempty(gridFlag)
     gridFlag = true ; 

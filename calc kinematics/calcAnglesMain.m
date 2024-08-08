@@ -10,7 +10,7 @@ if ~exist('dataPath','var') || isempty(dataPath)
     %mFilePath = mfilename('fullpath') ;
     %[filterSpec,~,~] = fileparts(mFilePath) ;
     %filterSpec =  'D:\Fly Data\VNC MN Chrimson\03_06112017\Analysis\Unsorted\Expr_3_mov_000\' ; 
-    filterSpec = 'D:\Fly Data\Opto Silencing\29_01092019\Analysis\Unsorted\Expr_29_mov_147\' ;
+    filterSpec = 'D:\Fly Data\VNC MN Chrimson\21_03102018\Analysis\Unsorted\Expr_21_mov_037\' ;
     %filterSpec = 'D:\Fly Data\VNC MN Chrimson\52_09112019\Analysis\Unsorted\Expr_52_mov_008\' ; 
     filepath_cell = uipickfiles('FilterSpec',filterSpec,...
         'Type',{'*.mat', 'MAT-files' },'NumFiles',1) ;
@@ -91,7 +91,7 @@ if (isfield(data,'correctionTime'))
 elseif(isfield(data,'manualCorrRangeMS'))
     correctionTime=data.manualCorrRangeMS;
 else
-    correctionTime = [-10, 30] ;
+    correctionTime = [-10, 50] ;
 end
 
 %--------------------------------------------------------------------------

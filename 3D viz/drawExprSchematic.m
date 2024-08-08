@@ -9,8 +9,8 @@ optoFlag = true ;  % add drawing of optogenetic light?
 savePrefix = '' ; % any additional string to affix to filenames
 pinType = 2 ;    % type of pin on fly. 0 = no pin , 1 = roll pin, 2 = pitch
 
-savePath = pwd  ; % ALTER AS NEEDED
-
+savePath = pwd ; % ALTER AS NEEDED
+% saveName = 'schematic_no_LED' ; 
 % ----------------------
 % overall scales
 flyScale = 4.0 ; 

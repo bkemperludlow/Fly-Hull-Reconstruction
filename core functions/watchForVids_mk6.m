@@ -10,14 +10,16 @@ function watchForVids_mk6(pathToWatch)
 % ------------------------------------------------------
 % check input(s)
 if ~exist('pathToWatch','var') || isempty(pathToWatch)
-    pathToWatch = 'D:\Box Sync Old\Opto Silencing\49_03112020\' ; %pwd ;
+    pathToWatch = 'D:\Box Sync Old\Opto Silencing\87_02092021\' ; %pwd ;
 end
 
 % search expression for movie file names
 fnExp = ['(?<camName>[xyz]{2})_(?<movieNum>\d+)|' ...
     '(?<camName>[xyz]{2})_(?<dayNameStr>\w+) (?<monthStr>\w+) ' ...
     '(?<day>\d+) (?<year>\d+) (?<hour>\d+) (?<minute>\d+) ' ...
-    '(?<second>\d+.\d+)' ]; 
+    '(?<second>\d+.\d+)|'...
+    '(?<camName>[xyz]{2})_Y(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})'...
+    'H(?<hour>\d{2})(?<minute>\d{2})(?<second>\d+.\d+)']; 
 
 % % -------------------------------------------------
 % % define global variables
@@ -151,17 +153,20 @@ function onChange(~, evt)
 
     % -------------------------------------------------------
     % get datenum information
-    if isempty(out_names.movieNum) && ~isempty(out_names.year)
-        % if file format includes trigger time, use that
+    if isempty(out_names.movieNum) && isempty(out_names.monthStr)
+        % if file includes trigger time (in PCC v3.6 version) use that
+        trigger_datestr = strjoin({out_names.year, out_names.month, ...
+            out_names.day, out_names.hour, out_names.minute,...
+            out_names.second(1:6)},' ') ;
+        trigger_datenum = datenum(trigger_datestr, ...
+            'yyyy mm dd HH MM SS.FFF') ;
+    elseif isempty(out_names.movieNum) && ~isempty(out_names.monthStr)
+        % if file format includes trigger time (in "~5" format), use that
         trigger_datestr = strjoin({out_names.year, out_names.monthStr, ...
             out_names.day, out_names.hour, out_names.minute,...
             out_names.second},' ') ;
         trigger_datenum = datenum(trigger_datestr, ...
             'yyyy mmm dd HH MM SS.FFF') ;
-%     elseif isempty(out_names.movieNum) && 
-%         % if file includes trigger time in older format (less precise)
-%         fprintf('Under construction! \n')
-%         keyboard
     else
         % otherwise, use current datetime as a proxy for trigger time
         % NB: THIS IS LAZY -- SHOULD GET FROM XML FILE
@@ -322,7 +327,7 @@ function add2queue(xy_fn, xz_fn, yz_fn)
         end
         movNumRange = (minMovNum:maxMovNum) ;
 
-        % lopp over possible movie numbers and see if we can use any
+        % loop over possible movie numbers and see if we can use any
         % without overwriting data
         movNumCheck = false(size(movNumRange)) ;
         for q = 1:length(movNumRange)

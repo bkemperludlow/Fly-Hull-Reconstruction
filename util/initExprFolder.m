@@ -3,10 +3,11 @@
 %==========================================================================
 
 % this is the root folder that we want to have our expt in
-rootPath = 'D:\Box Sync Old\Opto Silencing\' ; 
+rootPath = 'D:\Box Sync Old\Antenna test' ; 
+
 readmePath = 'D:\' ;
 readmeFilename_orig = 'README-template.txt' ; 
-readmeFilename_new = 'README.txt' ; 
+readmeFilename_new = 'README.txt' ;
 
 % get index for expt folders in root
 exprDir = dir(rootPath) ; 
@@ -19,7 +20,11 @@ exprStrs = exprStrs(~empty_idx) ;
 exprNums = cellfun(@(y) str2double(y.exprNum), exprStrs) ; 
 
 % define new folder
-exprNumNew = max(exprNums) + 1 ; 
+if isempty(exprNums)
+    exprNumNew = 1 ; 
+else
+    exprNumNew = max(exprNums) + 1 ; 
+end
 exprNumNewStr = num2str(exprNumNew, '%02d') ;
 
 t_now = datetime ; 
