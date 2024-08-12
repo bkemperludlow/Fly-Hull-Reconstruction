@@ -9,7 +9,7 @@
 %% data path information
 rootPath = 'D:\b1 paper data\' ;
 mn_name = 'b1' ; % 'b1' | 'b2'
-effector =  'UAS-GtACR1'  ; % 'new kir' | '5XUAS-DSCP-eGFPKir2.1'
+effector =  'new kir' ; %'UAS-GtACR1'  ; % 'new kir' | '5XUAS-DSCP-eGFPKir2.1'
 pertType = 'Pitch' ; % 'Pitch', 'Roll', or 'Yaw'
 KFlag = false ;
 overWriteFlag = false ;

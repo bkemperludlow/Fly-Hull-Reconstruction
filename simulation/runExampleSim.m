@@ -180,7 +180,7 @@ if plotFlag
     
     % plot locations colored by pitch angle
     scatter(x_lab(ind), z_lab(ind), [], thetaB(ind), 'o', 'filled')
-    phasemap
+    % phasemap
     
     % axis properties
     axis tight

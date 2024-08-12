@@ -1,5 +1,5 @@
 function [] = cleanUpAnalysesFun(pathToWatch, analysisType, MovNum, ...
-    clustFlag, largePertFlag, removeLegsFlag, alignBBoxFlag)
+    clustFlag, largePertFlag, removeLegsFlag, alignBBoxFlag, overWriteFlag)
 % -------------------------------------------------------------------------
 % FUNCTION to perform different types of post-processing to fly data
 %
@@ -11,15 +11,15 @@ function [] = cleanUpAnalysesFun(pathToWatch, analysisType, MovNum, ...
 % -----------------------------
 % set path for experiment folder wherein analysis is still needed
 if ~exist('pathToWatch','var') || isempty(pathToWatch)
-    pathToWatch = 'D:\Box Sync Old\Opto Silencing\46_23102020\' ; 
+    pathToWatch = 'D:\Box Sync Old\VNC Motor Lines\126_26012022\' ; 
 end
 % do full analysis, new reconstruction method, just angles, or other?
 if ~exist('analysisType','var') || isempty(analysisType)
-    analysisType = 'clean_wings' ; % 'extreme_roll' ; %'clean_wings' ;
+    analysisType = 'just_angles' ; % 'extreme_roll' ; %'clean_wings' ;
 end
 % range of movies to analyze in given experiment?
 if ~exist('MovNum','var') || isempty(MovNum)
-    MovNum = (122:134) ; % 
+    MovNum = (1:28) ; % 
 end
 if ~exist('clustFlag','var') || isempty(clustFlag)
     clustFlag = false ; % false % which version of analysis script to run
@@ -32,6 +32,10 @@ if ~exist('removeLegsFlag','var') || isempty(removeLegsFlag)
 end
 if ~exist('alignBBoxFlag','var') || isempty(alignBBoxFlag)
     alignBBoxFlag = false ; % try to align images to avoid clipping?
+end
+if ~exist('overWriteFlag','var') || isempty(overWriteFlag)
+    overWriteFlag = true ; % if analysis has already been done, still re-do it?
+    % NB: need to propagate this to cases beyond "full"
 end
 
 % get experiment number from folder name--too lazy to re-enter each time
@@ -69,6 +73,18 @@ for k = 1:Nmovies
         % perform full fly analysis from cine files to kinematics
         % ----------------------------------------------------------
         case 'full'
+            % first check if analysis has already been performed
+            movAnalysisPath = findMovAnalysisPath(pathStruct, MovNum(k)) ;
+            movAnalysisDir = dir(fullfile(movAnalysisPath, ...
+                sprintf('Expr_%d_mov_%03d*.mat', ExprNum, MovNum(k)))) ;
+            if ~isempty(movAnalysisDir) && ~overWriteFlag
+               fprintf('Already analyzed data for Expr %d, Movie %03d \n',...
+                   ExprNum, MovNum(k)) 
+               continue
+            end
+            
+            % then perform full analysis, if we're either overwriting or
+            % the file does not exist
             flyAnalysisMain(MovNum(k), ExprNum, pathStruct, clustFlag, ...
                 largePertFlag, removeLegsFlag) ;
         %% ----------------------------------------------------------------

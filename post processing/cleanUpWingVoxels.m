@@ -53,6 +53,9 @@ wingLength = data_in.wingLength ;
 params = data_in.params ; 
 voxelSize = params.voxelSize ; 
 detectorLengthPix = params.detectorLengthPix ;
+if length(detectorLengthPix) == 1 
+   detectorLengthPix = detectorLengthPix.*[1,1] ;  
+end
 CAMERAS = params.CAMERAS ;
 NCAMS = params.NCAMS ;
 
@@ -552,7 +555,7 @@ for i = 1:N_clusts
     for camNum = 1:3 
         if segWingsFlag(camNum)
             imWing = squeeze(imWingMat(camNum,:,:)) ; 
-            detectorLengthPix = size(imWing,1) ; 
+            detectorLengthPix = size(imWing) ; 
             projScore(i,camNum) = ...
                 checkVoxAgainstImg(wingVox(label_idx == i,:), imWing, dlt, ...
                 camNum, detectorLengthPix, order, voxelSize) ;
@@ -646,15 +649,15 @@ end
 % project wing coordinates to image space with dlt
 wingProjPix = dlt_inverse(dlt(:,order(camNum)), wingCoords) ; 
 pixel_floor = floor([wingProjPix(:,1), ...
-    (detectorLengthPix - wingProjPix(:,2) + 1)]) ; 
+    (detectorLengthPix(1) - wingProjPix(:,2) + 1)]) ; 
 pixel_ceil = ceil([wingProjPix(:,1), ...
-    (detectorLengthPix - wingProjPix(:,2) + 1)]) ;
+    (detectorLengthPix(1) - wingProjPix(:,2) + 1)]) ;
 
 % take out any that go outside image
-good_idx_floor = (pixel_floor(:,1) > 0) & (pixel_floor(:,1) < detectorLengthPix) & ...
-    (pixel_floor(:,2) > 0) & (pixel_floor(:,2) < detectorLengthPix) ;
-good_idx_ceil = (pixel_ceil(:,1) > 0) & (pixel_ceil(:,1) < detectorLengthPix) & ...
-    (pixel_ceil(:,2) > 0) & (pixel_ceil(:,2) < detectorLengthPix) ;
+good_idx_floor = (pixel_floor(:,1) > 0) & (pixel_floor(:,1) < detectorLengthPix(2)) & ...
+    (pixel_floor(:,2) > 0) & (pixel_floor(:,2) < detectorLengthPix(1)) ;
+good_idx_ceil = (pixel_ceil(:,1) > 0) & (pixel_ceil(:,1) < detectorLengthPix(2)) & ...
+    (pixel_ceil(:,2) > 0) & (pixel_ceil(:,2) < detectorLengthPix(1)) ;
 
 pixel_floor(~good_idx_floor,:) = 1 ; 
 pixel_ceil(~good_idx_ceil,:) = 1 ; 
@@ -687,7 +690,7 @@ function dist_mat = compareWingCentroidVox(imWing1, imWing2, camNum, voxR,...
     voxL, dlt, order, voxelSize)
 % initialize some storage
 dist_mat = Inf*ones(2, 2) ; 
-detectorLengthPix = size(imWing1,1) ; 
+detectorLengthPix = size(imWing1) ; 
 
 % concatenate arrays so we can loop through
 imWingCell = {imWing1, imWing2} ; 
@@ -720,13 +723,16 @@ function [imWingRMat, imWingLMat, segWingsFlag] = ...
 % -----------------------------------
 %% inputs and params
 detectorLengthPix = params.detectorLengthPix ;
+if length(detectorLengthPix) == 1
+    detectorLengthPix = detectorLengthPix.*[1,1] ; 
+end
 CAMERAS = params.CAMERAS ;
 NCAMS = params.NCAMS ;
 voxelSize = params.voxelSize ;
 % -------------------------------------------------------------------------
 % load in binary images of 1) full fly 2) just body
-imMatFly   = false(NCAMS, detectorLengthPix, detectorLengthPix) ;
-imMatBody  = false(NCAMS, detectorLengthPix, detectorLengthPix) ;
+imMatFly   = false(NCAMS, detectorLengthPix(1), detectorLengthPix(2)) ;
+imMatBody  = false(NCAMS, detectorLengthPix(1), detectorLengthPix(2)) ;
 for c=CAMERAS
     % load images from sparse array
     imMatFly(c,:,:)  = getImage4D(all_fly_bw, c, ind);
@@ -734,8 +740,8 @@ for c=CAMERAS
 end
 
 % segment wings in images
-imWingRMat = false(NCAMS, detectorLengthPix, detectorLengthPix) ;
-imWingLMat = false(NCAMS, detectorLengthPix, detectorLengthPix) ;
+imWingRMat = false(NCAMS, detectorLengthPix(1), detectorLengthPix(2)) ;
+imWingLMat = false(NCAMS, detectorLengthPix(1), detectorLengthPix(2)) ;
 sameMasksFlag = false(NCAMS,1) ;
 noWingsFlag = false(NCAMS,1) ;
 wingExtremaFlag = false(NCAMS,2,2) ; % N_cams x N_objects x N_coordinates

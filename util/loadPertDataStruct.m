@@ -29,6 +29,10 @@ elseif contains(dataPath,'Roll Right','IgnoreCase',true)
     pertType = 2 ; 
 elseif contains(dataPath,'Roll Left','IgnoreCase',true)
     pertType = -2 ;
+elseif contains(dataPath,'Yaw Right','IgnoreCase',true)
+    pertType = 3 ;
+elseif contains(dataPath,'Yaw Left','IgnoreCase',true)
+    pertType = -3 ;
 else
     pertType = 0 ; 
 end

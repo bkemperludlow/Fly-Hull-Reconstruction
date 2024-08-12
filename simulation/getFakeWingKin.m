@@ -81,6 +81,9 @@ elseif contains(wingSide,'L','IgnoreCase',true) && (del_psi > 0)
     % rotation angle flip
     psi_dot = -1.*psi_dot ;
     psi = pi - psi ;
+elseif contains(wingSide,'L','IgnoreCase',true) && (del_psi < 0)
+    % in this case, i don't think we need to do anything, since we've
+    % already swapped signs on the right wing, presumably
 else
     fprintf('Invalid wing side: %s \n', wingSide)
     keyboard

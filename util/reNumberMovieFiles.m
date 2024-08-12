@@ -15,19 +15,19 @@ pathCurr = pwd ;
 cd(vidPath)
 
 % which camera files to rename
-filePrefixArray =  {'yz'} ; % {'xy', 'xz', 'yz'} ; % {'xy', 'xz', 'yz'} ;
+filePrefixArray =  {'xy', 'xz', 'yz'} ; % {'xy', 'xz', 'yz'} ; % {'xy', 'xz', 'yz'} ;
 % which file types to rename
-fileExtensionArray = {'.xml', '.cin'} ;
+fileExtensionArray = {'.cine', '.xml'} ;
 
 % keyboard
 
 % define the start, end, and shift number for the movie files you'd like to
 % rename
-startInd = 21 ; 
-endInd = 201 ; 
-deltaInd = -2 ;
+startInd = 0 ; 
+endInd = 0 ; 
+deltaInd = +1 ;
 % used to prevent overwriting
-backwardsFlag = false ; 
+backwardsFlag = true ; 
 
 for n = 1:length(filePrefixArray)
     %set camera
