@@ -10,7 +10,7 @@ function watchForVids_mk9(pathToWatch, cinFileSize)
 % ------------------------------------------------------
 % check input(s)
 if ~exist('pathToWatch','var') || isempty(pathToWatch)
-    pathToWatch = 'D:\Box Sync Old\Antenna test\01_06082024' ; %pwd ;
+    pathToWatch = 'D:\Box Sync Old\Opto Mechanical\197_10082024' ; %pwd ;
 end
 
 % search expression for movie file names

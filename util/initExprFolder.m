@@ -3,7 +3,7 @@
 %==========================================================================
 
 % this is the root folder that we want to have our expt in
-rootPath = 'D:\Box Sync Old\Antenna test' ; 
+rootPath = 'D:\Box Sync Old\Opto Mechanical' ; 
 
 readmePath = 'D:\' ;
 readmeFilename_orig = 'README-template.txt' ; 
