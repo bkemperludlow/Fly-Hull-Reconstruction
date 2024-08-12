@@ -3,19 +3,15 @@ function combineAllMoviesInFolder(folderName, movieNumbers, ...
 
 %combineAllMoviesInFolder('D:\Box Sync Old\Opto Silencing\38_28012020\', 44:62,'Expr_38') ;
 %{
-combineAllMoviesInFolder('D:\Box Sync Old\Mechanical Perturbation\04_30072024\');
 
-combineAllMoviesInFolder('D:\Box Sync Old\Opto Mechanical\195_27072024\')
-combineAllMoviesInFolder('D:\Box Sync Old\Haltere Experiment\91_02082024\')
-combineAllMoviesInFolder('Y:\Optomechanical\155_09112023\')
+combineAllMoviesInFolder('D:\Box Sync Old\Opto Mechanical\64_15122022\');
 
+combineAllMoviesInFolder('D:\Box Sync Old\Opto Mechanical\62_10122022\');
+combineAllMoviesInFolder('D:\Box Sync Old\Descending Neurons\09_06082022\',1:69,'Expr9');
 
-Y:\Optomechanical\150_31102023
-Y:\Optomechanical\152_04112023
-Y:\Optomechanical\151_02112023
-Y:\Optomechanical\153_05112023
+combineAllMoviesInFolder('D:\Box Sync Old\Opto Mechanical\72_27012023\')
+combineAllMoviesInFolder('D:\Box Sync Old\Haltere Experiment\37_01032023\')
 
-combineAllMoviesInFolder('D:\Box Sync Old\Antenna test\01_06082024')
 
 %}
 %prevpath = pwd 
