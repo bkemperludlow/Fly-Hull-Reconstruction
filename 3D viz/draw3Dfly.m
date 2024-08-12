@@ -1,6 +1,6 @@
 
 function [flyGrp, bodyGrp, rightWingGrp, leftWingGrp, dL, rightWingTip, leftWingTip ] = ....
-    draw3Dfly_v3(ax, scale, resolution, pinType, thetab0, gridFlag, colorScheme) %#ok<INUSD>
+    draw3Dfly(ax, scale, resolution, pinType, thetab0, gridFlag, colorScheme) %#ok<INUSD>
 
 if ~exist('gridFlag','var') || isempty(gridFlag)
     gridFlag = true ; 
@@ -48,6 +48,46 @@ switch colorScheme
         abdomenColor = [0, 1, 0] ;
         rightWingColor = [1, 0, 0] ; %[1 0 0 ]
         leftWingColor  = [0, 0, 1] ;
+    case 'normal_contrast'
+        pinColor = [.5 .5 1] ;
+        eyeColor = [255 85 52] / 255 ; % [0.9 0.0 0.0] ;
+        thoraxColor = [194 97 20] / 255 ;
+        headColor   = [217 185 136]/255 ;
+        abdomenColor = mean([thoraxColor ; headColor]) ;
+        rightWingColor = [194 97 20]/255*.4 ; %[1 0 0 ]
+        leftWingColor  = [194 97 20]/255*.4  ; % [0.5 0.5 1 ]
+    case 'rightStim'
+        pinColor = 0.5*[1 1 1] ;
+        eyeColor = 0.5*[1 1 1] ; % [0.9 0.0 0.0] ;
+        thoraxColor = 0.6*[1 1 1] ;
+        headColor   = 0.7*[1 1 1]  ;
+        abdomenColor = 0.7*[1 1 1] ;
+        rightWingColor = [170 68 153]/255 ;%[255, 100, 100]/255*.6 ; %[1 0 0 ]
+        leftWingColor  = [17 119 51]/255 ; % 0.4*[1 1 1]  ; % [0.5 0.5 1 ]
+    case 'leftStim'
+        pinColor = 0.5*[1 1 1] ;
+        eyeColor = 0.5*[1 1 1] ; % [0.9 0.0 0.0] ;
+        thoraxColor = 0.6*[1 1 1] ;
+        headColor   = 0.7*[1 1 1]  ;
+        abdomenColor = 0.7*[1 1 1] ;
+        leftWingColor = [170 68 153]/255 ; %[1 0 0 ]
+        rightWingColor  = [17 119 51]/255  ; % [0.5 0.5 1 ]
+    case 'stim'
+        pinColor = 0.5*[1 1 1] ;
+        eyeColor = 0.5*[1 1 1] ; % [0.9 0.0 0.0] ;
+        thoraxColor = 0.6*[1 1 1] ;
+        headColor   = 0.7*[1 1 1]  ;
+        abdomenColor = 0.7*[1 1 1] ;
+        rightWingColor = [170 68 153]/255 ;%[255, 100, 100]/255*.6 ; %[1 0 0 ]
+        leftWingColor  = [170 68 153]/255 ;%[255, 100, 100]/255*.6  ; % [0.5 0.5 1 ]
+    case 'prestim'
+        pinColor = 0.5*[1 1 1] ;
+        eyeColor = 0.5*[1 1 1] ; % [0.9 0.0 0.0] ;
+        thoraxColor = 0.6*[1 1 1] ;
+        headColor   = 0.7*[1 1 1]  ;
+        abdomenColor = 0.7*[1 1 1] ;
+        rightWingColor = [17 119 51]/255 ;%[255, 100, 100]/255*.6 ; %[1 0 0 ]
+        leftWingColor  = [17 119 51]/255 ;%[255, 100, 100]/255*.6  ; % [0.5 0.5 1 ]
     otherwise
         fprintf('Invalid color scheme selection: %s \n', colorScheme)
 end

@@ -52,10 +52,10 @@ function correctionGUI_sam_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   unrecognized PropertyName/PropertyValue pairs from the
 %            command line (see VARARGIN)
-tmsCurr_default = 34 ; %-10 ;
+tmsCurr_default = -20 ; %-10 ;
 saveEvery_default = 200000 ; %200
 %startdir_default = 'D:\Fly Data\VNC MN Chrimson\28_05042019\Analysis\Unsorted\Expr_28_mov_006\' ;%'D:\Fly Data\VNC Motor Lines\' ;
-startdir_default = 'D:\Fly Data\Opto Silencing\18_11052019\Analysis\Unsorted\Expr_18_mov_041\' ;
+startdir_default = 'D:\Box Sync Old\Haltere Experiment\22_16092022\Analysis\Unsorted\Expr_22_mov_001\' ;
 bodyFrameFlag_default = false ; 
 largePertFlag_default = false ;
 
@@ -136,6 +136,10 @@ set(handles.figure1, 'KeyPressFcn', []);
 handles.dataFlag = false ;
 handles.datapath_curr = [] ;
 handles.dirlist = [] ;
+
+% setting to determine whether or not we should recalculate angles every
+% time we save manually corrected data
+handles.calcNewAnglesFlag = true ; 
 
 % reference structures to make callbacks easier
 adjustTagStruct = struct() ;
@@ -698,11 +702,15 @@ if ~isempty(handles.datapath_curr)
     end
     % enable sliders so that angles can be adjusted
     enableButtons()
+    
+    % store data to gui and update display
+    guidata(hObject, handles);
+    updateDisplay(hObject);
 else
+    % if there's nothing to load, just print that and do nothing
     disp('No data file selected')
 end
-guidata(hObject, handles);
-updateDisplay(hObject);
+
 
 % ---------------------------------------------------------------------
 % function to store whether or not a given fly objet was changed
@@ -795,10 +803,22 @@ guidata(hObject, handles);
 
 % -----------------------------------
 % return sliders to default position
-function resetSliders()
-%handles = guidata(hObject) ;
+function resetSliders(hObject, newFrame)
+% get handles struct from gui object 
+handles = guidata(hObject) ;
+
+% set all sliders back to zero (or where they were from previous correction)
 slider_handles = findall(0,'Style','Slider') ;
-set(slider_handles,'Value',0) ;
+% set(slider_handles,'Value',0) ;
+for ind = 1:length(slider_handles)
+   slider_curr = slider_handles(ind) ;
+   tag_curr = get(slider_curr,'Tag') ;
+   reset_val = handles.adjust(newFrame, ...
+       handles.adjustTagStruct.(tag_curr)) ; 
+   set(slider_curr,'Value', reset_val)
+   % disp(reset_val)
+end
+
 
 % ---------------------------------
 % save *_manually_corrected file
@@ -807,7 +827,8 @@ function saveData(hObject)
 handles = guidata(hObject) ;
 f = waitbar(0,'') ;
 f.Children(end).Title.Interpreter = 'none' ;
-waitbar(0,f, ['Saving data to ' handles.output_path]) ;
+[~, fn_str, ~] = fileparts(handles.output_path) ; 
+waitbar(0,f, sprintf('Saving data to %s', fn_str)) ;
 
 % load data file
 data = importdata(handles.datapath_curr) ;
@@ -851,12 +872,37 @@ if handles.bodyFrameFlag
    data.bodyFrameRotMats = handles.bodyFrameRotMats ; 
    data = bodyToLabFrame(data) ; 
 end
+
+% update and close waitbar
 waitbar(0.66)
-
 save(handles.output_path,'data')
-
 waitbar(1)
 close(f)
+
+% also calculate angles?
+if handles.calcNewAnglesFlag
+    % make new waitbar to alert user of angle calculation
+    f_ang = waitbar(0,'') ;
+    f_ang.Children(end).Title.Interpreter = 'none' ;
+    waitbar(0,f_ang, sprintf('Calculating angles for %s', fn_str)) ;
+    
+    % calculate angles
+    angleSaveFlag = true ;
+    anglePlotFlag = true ;
+    calcAnglesMain(handles.output_path, handles.largePertFlag, ...
+        angleSaveFlag, anglePlotFlag) ;
+    
+    % close waitbar
+    waitbar(1)
+    close(f_ang)
+    
+    % close plots
+    openFigures = findobj('Type','Figure','-not','Tag',...
+        get(handles.output,'Tag'));
+    close(openFigures)
+
+end
+
 
 
 function [handles, adjust_val] = sliderAdjust(hObject, handles)
@@ -1496,11 +1542,13 @@ function bback_Callback(hObject, eventdata, handles)
 % hObject    handle to bback (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% shift current timing/frame
 handles.frameCurr = handles.frameCurr - 10 ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
 resetToggleButtons(hObject, handles.frameCurr)
-resetSliders()
+resetSliders(hObject, handles.frameCurr)
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
 end
@@ -1513,11 +1561,13 @@ function back_Callback(hObject, eventdata, handles)
 % hObject    handle to back (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% shift current timing/frame
 handles.frameCurr = max([handles.frameCurr - 1, 1]) ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons(hObject, handles.frameCurr)
-resetSliders()
+resetToggleButtons(hObject, handles.frameCurr) % reset buttons
+resetSliders(hObject, handles.frameCurr)  % reset sliders
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
 end
@@ -1534,11 +1584,13 @@ if handles.frameCurr >= handles.Nimages
     disp('Movie completed!')
     return
 end
+
+% shift current timing/frame
 handles.frameCurr = handles.frameCurr + 1 ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons(hObject, handles.frameCurr)
-resetSliders()
+resetToggleButtons(hObject, handles.frameCurr) % reset buttons
+resetSliders(hObject, handles.frameCurr)  % reset sliders
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
 end
@@ -1556,11 +1608,13 @@ if (handles.frameCurr + 10) >= handles.Nimages
     disp('Not enough remaining frames to skip forward')
     return
 end
+
+% shift current timing/frame
 handles.frameCurr = handles.frameCurr + 10 ;
 handles.tmsCurr = handles.tvec(handles.frameCurr) ;
 handles = updateChangeFlags(handles,'all') ;
-resetToggleButtons(hObject, handles.frameCurr)
-resetSliders()
+resetToggleButtons(hObject, handles.frameCurr) % reset buttons
+resetSliders(hObject, handles.frameCurr)  % reset sliders
 if mod(handles.frameCurr,handles.saveEvery) == 0
     saveData(hObject)
 end

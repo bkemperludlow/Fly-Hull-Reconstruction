@@ -15,7 +15,7 @@
 %
 % -------------------------------------------------------------------------
 function [h_main, ax] = drawAngleSchematicsFunc(schematicType, pinType, ...
-    labelFlag, figSize, saveFlag, savePath)
+    labelFlag, figSize, saveFlag, savePath, axisFlag)
 % ------------------------
 %% inputs/params
 if ~exist('schematicType','var') || isempty(schematicType)
@@ -36,7 +36,9 @@ end
 if ~exist('savePath','var') || isempty(savePath)
     savePath = pwd ; % TO BE ALTERED
 end
-
+if ~exist('axisFlag','var') || isempty(axisFlag)
+    axisFlag = false ; % TO BE ALTERED
+end
 % ----------------------
 %% overall scales
 flyScale = 4.0 ;
@@ -82,7 +84,7 @@ lightPos = [0.2638    0.2293   -0.2018] ;
 % ylim = [-150   150] ;
 % zlim = [-60.4879   95.8579] ;
 
-figUnits = 'inches' ; 
+figUnits = 'inches' ;
 figPosition = [-0.0833, 0.3333, figSize(1), figSize(1)] ; %[1921, 41, 1920, 963]
 
 % --------------------
@@ -166,37 +168,39 @@ switch schematicType
     case 'body'
         % ------------------------------------------------------------------------
         %% lab frame arrows
-        % define lab axes
-        xdirYPRdeg = [ 0  0 0 ] ;
-        ydirYPRdeg = [ 90 0 0 ] ;
-        zdirYPRdeg = [ 0 90 0 ] ;
-        % combine lab frame vectors into matrix
-        xyzDirYPRdeg = [xdirYPRdeg; ydirYPRdeg; zdirYPRdeg] ;
-        
-        % initialize array for tip (to be used for labels)
-        arrowTip = [arrowLength + arrowTipHeight, 0, 0] ;
-        % scale up a little to avoid overlap
-        arrowTip = labelTipScale*arrowTip ;
-        xyzArrowTips = repmat(arrowTip,3,1) ;
-        
-        % initialize parent group for lab frame arrows
-        xyzGroup = hgtransform('Parent',ax);
-        labArrows = gobjects(size(xyzDirYPRdeg,1),1) ;
-        
-        % generate arrows and get tip locations
-        for dim = 1:size(xyzDirYPRdeg,1)
-            % draw arrow
-            labArrows(dim) = myArrow(ax, xyzGroup, arrowLength, ...
-                arrowTipDiameter, arrowTipHeight, arrowRodDiameter , ...
-                basePoint, xyzDirYPRdeg(dim,:), arrowColor, ...
-                arrowResolution, arrowLineStyle) ;
+        if axisFlag
+            % define lab axes
+            xdirYPRdeg = [ 0  0 0 ] ;
+            ydirYPRdeg = [ 90 0 0 ] ;
+            zdirYPRdeg = [ 0 90 0 ] ;
+            % combine lab frame vectors into matrix
+            xyzDirYPRdeg = [xdirYPRdeg; ydirYPRdeg; zdirYPRdeg] ;
             
-            % get tip position
-            ypr_rad = (pi/180).*xyzDirYPRdeg(dim,:) ;
-            rotM = eulerRotationMatrix(ypr_rad(1),ypr_rad(2),ypr_rad(3));
-            xyzArrowTips(dim,:) = rotM'*xyzArrowTips(dim,:)' + basePoint ;
-        end
-        %{
+            % initialize array for tip (to be used for labels)
+            arrowTip = [arrowLength + arrowTipHeight, 0, 0] ;
+            % scale up a little to avoid overlap
+            arrowTip = labelTipScale*arrowTip ;
+            xyzArrowTips = repmat(arrowTip,3,1) ;
+            
+            % initialize parent group for lab frame arrows
+            xyzGroup = hgtransform('Parent',ax);
+            labArrows = gobjects(size(xyzDirYPRdeg,1),1) ;
+            
+            % generate arrows and get tip locations
+            for dim = 1:size(xyzDirYPRdeg,1)
+                % draw arrow
+                labArrows(dim) = myArrow(ax, xyzGroup, arrowLength, ...
+                    arrowTipDiameter, arrowTipHeight, arrowRodDiameter , ...
+                    basePoint, xyzDirYPRdeg(dim,:), arrowColor, ...
+                    arrowResolution, arrowLineStyle) ;
+                
+                % get tip position
+                ypr_rad = (pi/180).*xyzDirYPRdeg(dim,:) ;
+                rotM=eulerRotationMatrix(ypr_rad(1),ypr_rad(2),ypr_rad(3));
+                xyzArrowTips(dim,:) = rotM'*xyzArrowTips(dim,:)' ...
+                    + basePoint ;
+            end
+            %{
         xArrowGrp = myArrow(ax,xyzGroup, arrowLength, arrowTipDiameter, ...
             arrowTipHeight, arrowRodDiameter , basePoint, xdirYPRdeg, arrowColor, ...
             arrowResolution,arrowLineStyle) ;
@@ -206,22 +210,21 @@ switch schematicType
         zArrowGrp = myArrow(ax,xyzGroup, arrowLength, arrowTipDiameter, ...
             arrowTipHeight, arrowRodDiameter , basePoint, zdirYPRdeg, arrowColor, ...
             arrowResolution,arrowLineStyle) ;
-        %}
-        material(xyzGroup, arrowMaterialType)
-        
-        % write labels on arrows?
-        if labelFlag
-            xyzLabelObjs = gobjects(size(xyzDirYPRdeg,1),1) ;
+            %}
+            material(xyzGroup, arrowMaterialType)
             
-            for dim = 1:3
-                xyzLabelObjs(dim) = text(xyzArrowTips(dim,1), ...
-                    xyzArrowTips(dim,2),  xyzArrowTips(dim,3), ...
-                    xyzLabels{dim},'FontName',fontName,...
-                    'FontSize',fontSizeSmall,'FontWeight',fontWeight) ;
+            % write labels on arrows?
+            if labelFlag
+                xyzLabelObjs = gobjects(size(xyzDirYPRdeg,1),1) ;
+                
+                for dim = 1:3
+                    xyzLabelObjs(dim) = text(xyzArrowTips(dim,1), ...
+                        xyzArrowTips(dim,2),  xyzArrowTips(dim,3), ...
+                        xyzLabels{dim},'FontName',fontName,...
+                        'FontSize',fontSizeSmall,'FontWeight',fontWeight) ;
+                end
             end
         end
-        
-        
         % -------------------------------------------------------------------------
         %% draw  body axis arrow
         aHatArrowGrp = hgtransform('Parent',ax);
@@ -376,48 +379,50 @@ switch schematicType
         
         % -----------------------------------------------------------------
         %% body coordinates arrows
-        xyzBodyArrowGrp = hgtransform('Parent',ax);
-        M1 = eulerRotationMatrix(bodyYPR(1), bodyYPR(2), bodyYPR(3)) ;
-        %M2 = eulerRotationMatrix(0, -pi/4, 0) ;
-        hatVecs = eye(3) ;
-        bodyArrows = gobjects(size(hatVecs,1),1) ;
-        
-        for dim = 1:size(hatVecs)
-            hatVecCurr = hatVecs(dim,:) ;
-            hatVecBody = M1'*hatVecCurr' ;
+        if axisFlag
+            xyzBodyArrowGrp = hgtransform('Parent',ax);
+            M1 = eulerRotationMatrix(bodyYPR(1), bodyYPR(2), bodyYPR(3)) ;
+            %M2 = eulerRotationMatrix(0, -pi/4, 0) ;
+            hatVecs = eye(3) ;
+            bodyArrows = gobjects(size(hatVecs,1),1) ;
             
-            yawCurr = atan2(hatVecBody(2), hatVecBody(1)) ;
-            pitchCurr = asin(hatVecBody(3)) ;
-            YPRdeg = (180/pi)*[yawCurr, pitchCurr, 0] ;
-            
-            % scale length of body axis arrow
-            if (dim == 3)
-                bodyArrowScale = 0.85 ;
-            else
-                bodyArrowScale = 1.15 ;
+            for dim = 1:size(hatVecs)
+                hatVecCurr = hatVecs(dim,:) ;
+                hatVecBody = M1'*hatVecCurr' ;
+                
+                yawCurr = atan2(hatVecBody(2), hatVecBody(1)) ;
+                pitchCurr = asin(hatVecBody(3)) ;
+                YPRdeg = (180/pi)*[yawCurr, pitchCurr, 0] ;
+                
+                % scale length of body axis arrow
+                if (dim == 3)
+                    bodyArrowScale = 0.85 ;
+                else
+                    bodyArrowScale = 1.15 ;
+                end
+                
+                % draw arrow
+                bodyArrows(dim) = myArrow(ax, xyzBodyArrowGrp, ...
+                    bodyArrowScale*arrowLength, arrowTipDiameter, ...
+                    arrowTipHeight, arrowRodDiameter , basePoint, YPRdeg, ...
+                    ahatColor, arrowResolution, arrowLineStyle) ;
+                
+                % make label?
+                if labelFlag
+                    scaleCurr = (bodyArrowScale + 0.05)*arrowLength + ...
+                        arrowTipHeight ;
+                    bodyArrowTip = scaleCurr*hatVecBody + basePoint ;
+                    text(bodyArrowTip(1), bodyArrowTip(2), bodyArrowTip(3),...
+                        xyzBodyLabels{dim}, 'FontName',fontName,...
+                        'FontSize',fontSizeSmall, 'FontWeight',fontWeight, ...
+                        'Color', ahatColor) ;
+                end
             end
+            %AHat = [cos(bodyYPR(1))*cos(bodyYPR(2)), sin(bodyYPR(1))*cos(bodyYPR(2)), ...
+            %    sin(bodyYPR(2))]' ;
             
-            % draw arrow
-            bodyArrows(dim) = myArrow(ax, xyzBodyArrowGrp, ...
-                bodyArrowScale*arrowLength, arrowTipDiameter, ...
-                arrowTipHeight, arrowRodDiameter , basePoint, YPRdeg, ...
-                ahatColor, arrowResolution, arrowLineStyle) ;
-            
-            % make label?
-            if labelFlag
-                scaleCurr = (bodyArrowScale + 0.05)*arrowLength + ...
-                    arrowTipHeight ;
-                bodyArrowTip = scaleCurr*hatVecBody + basePoint ;
-                text(bodyArrowTip(1), bodyArrowTip(2), bodyArrowTip(3),...
-                    xyzBodyLabels{dim}, 'FontName',fontName,...
-                    'FontSize',fontSizeSmall, 'FontWeight',fontWeight, ...
-                    'Color', ahatColor) ;
-            end
+            material(xyzBodyArrowGrp, arrowMaterialType)
         end
-        %AHat = [cos(bodyYPR(1))*cos(bodyYPR(2)), sin(bodyYPR(1))*cos(bodyYPR(2)), ...
-        %    sin(bodyYPR(2))]' ;
-        
-        material(xyzBodyArrowGrp, arrowMaterialType)
         % -----------------------------------------------------------------
         %% curved arrows for wing angles
         
@@ -435,9 +440,10 @@ switch schematicType
         %YPRdeg    = 0*[ bodyYPRdeg(1) -bodyYPRdeg(2) 0 ] ;
         YPRdeg    = (180/pi).*[rightYPR(1), 2.5*rightYPR(2), 0 ] ;  %[0 -90 0] ;
         etaCenterPoint = 5.0*scale*spanVec + [ 0  -thoraxRadius*scale 0 ]' ;
-        etaArrowGroup = myCurvedArrow(ax, curvedArrowsGroup, arcRadius, startAngle, ...
-            endAngle,  arrowTipDiameter, 0.5*arrowTipHeight, arrowRodDiameter, ...
-            etaCenterPoint, YPRdeg, curvedColor, arrowResolution,arrowLineStyle) ;
+        etaArrowGroup = myCurvedArrow(ax, curvedArrowsGroup, arcRadius,...
+            startAngle, endAngle,  arrowTipDiameter, 0.5*arrowTipHeight, ...
+            arrowRodDiameter, etaCenterPoint, YPRdeg, curvedColor, ...
+            arrowResolution,arrowLineStyle) ;
         
         % wing pitch arrow label
         if labelFlag
@@ -533,17 +539,17 @@ switch schematicType
         veinDir = [-90, 180, 0] ; %(180/pi)*leftYPR ;
         veinArrowLength = 0.85*strokePlaneRadius  ;
         wingBase = [0, 1, 0]' ;
-        myArrow(ax, leftWingGrp, veinArrowLength, arrowTipDiameter, arrowTipHeight, ...
-            arrowRodDiameter , wingBase, veinDir, arrowColor, arrowResolution, ...
-            arrowLineStyle) ;
+        myArrow(ax, leftWingGrp, veinArrowLength, arrowTipDiameter, ...
+            arrowTipHeight, arrowRodDiameter , wingBase, veinDir, ...
+            arrowColor, arrowResolution, arrowLineStyle) ;
         
         if labelFlag
             spanVec = [cos(leftYPR(1))*cos(leftYPR(2)), ...
                 sin(leftYPR(1))*cos(leftYPR(2)), ...
                 sin(leftYPR(2))]' ;
             tipPoint = ...
-                0.975*labelTipScale*(veinArrowLength + arrowTipHeight)*spanVec + ...
-                [ 0  thoraxRadius*scale 0 ]' ;
+                0.975*labelTipScale*(veinArrowLength + ...
+                arrowTipHeight)*spanVec + [ 0  thoraxRadius*scale 0 ]' ;
             
             text(tipPoint(1), tipPoint(2), tipPoint(3), 'x_{wing}', ...
                 'FontName',fontName, 'FontSize',fontSizeSmall, ...
@@ -554,9 +560,9 @@ switch schematicType
         yDir = [0, 0, 0] ; %(180/pi)*leftYPR ;
         yArrowLength = 0.25*strokePlaneRadius  ;
         wingBase = [0, 1, 0]' ;
-        myArrow(ax, leftWingGrp, yArrowLength, arrowTipDiameter, arrowTipHeight, ...
-            arrowRodDiameter , wingBase, yDir, arrowColor, arrowResolution, ...
-            arrowLineStyle) ;
+        myArrow(ax, leftWingGrp, yArrowLength, arrowTipDiameter, ...
+            arrowTipHeight, arrowRodDiameter , wingBase, yDir, ...
+            arrowColor, arrowResolution, arrowLineStyle) ;
         
         if labelFlag
             tipPoint = ...
@@ -571,9 +577,9 @@ switch schematicType
         zDir = [0, -90, 0] ; %(180/pi)*leftYPR ;
         zArrowLength = 0.25*strokePlaneRadius  ;
         wingBase = [0, 1, 0]' ;
-        myArrow(ax, leftWingGrp, zArrowLength, arrowTipDiameter, arrowTipHeight, ...
-            arrowRodDiameter , wingBase, zDir, arrowColor, arrowResolution, ...
-            arrowLineStyle) ;
+        myArrow(ax, leftWingGrp, zArrowLength, arrowTipDiameter, ...
+            arrowTipHeight, arrowRodDiameter , wingBase, zDir, ...
+            arrowColor, arrowResolution, arrowLineStyle) ;
         
         if labelFlag
             tipPoint = ...

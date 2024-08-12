@@ -12,11 +12,14 @@ fig = drawPertSchematic(rootPath, MovNum, snapshotTimes, pertType) ;
 %}
 % -------------------------------------------------------------------------
 function main_fig = drawPertSchematic(rootPath, MovNum, snapshotTimes, ...
-    pertType, pix_pad_array)
+    pertType, pix_pad_array, view_az_el)
 % ----------------------------
 %% params and inputs
 if ~exist('pix_pad_array','var') || isempty(pix_pad_array)
     pix_pad_array = 20*[-1, 1, -1, 1, -1, 1] ; 
+end
+if ~exist('view_az_el','var') || isempty(view_az_el)
+    view_az_el = [160, 20] ;
 end
 % scale for drawings
 imScale = 5 ;
@@ -25,8 +28,8 @@ imageResolution = [1024 768] ;
 flyResolution =  100 ;
 
 % view angles
-az = 160; %61 ; %54 
-el = 20 ; %23 ; % 12
+az = view_az_el(1); %61 ; %54
+el = view_az_el(2) ; %23 ; % 12
 
 % pixel padding for when we trim images
 pix_pad_array = imScale*pix_pad_array ;
@@ -285,6 +288,11 @@ bw_xy = imbinarize(imcomplement(im_xy)) ;
 bw_xz = imbinarize(imcomplement(im_xz)) ; 
 bw_yz = imbinarize(imcomplement(im_yz)) ; 
 imSize = size(bw_xy,1) ; 
+
+% clean up any noise in images
+bw_xy = bwareaopen(bw_xy, 5e3) ; 
+bw_xz = bwareaopen(bw_xz, 5e3) ; 
+bw_yz = bwareaopen(bw_yz, 5e3) ; 
 
 % get bounding boxes that surround all objects
 bbox_xy = totalBBox(bw_xy) ;

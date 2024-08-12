@@ -119,7 +119,7 @@ elseif rhoFlag && ~isfield(data, 'newRhoSamp')
         calcBodyRoll(rhoTimes, rollVectors, t, rotM_YP, data.params,...
          largePertFlag) ;
 else
-    smoothed_rho = rho0 ;
+    smoothed_rho = 0 ; %rho0 ;
     sp_rho = [] ;
     rho_t = allT ;
     rho_samp = 0 ;

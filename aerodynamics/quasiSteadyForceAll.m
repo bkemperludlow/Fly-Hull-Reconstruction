@@ -264,7 +264,7 @@ if plotFlag
     h_tot = plot(t, myNorm(F_tot)./(body_mass*g), 'k-','LineWidth',1.5) ;
     
     % translational force
-    h_trans = plot(t, myNorm(F_trans)./(body_mass*g),'r--') ;
+    h_trans = plot(t, myNorm(F_t)./(body_mass*g),'r--') ;
     
     % rotational force
     h_rot = plot(t, myNorm(F_rot)./(body_mass*g),'b--') ;
@@ -277,7 +277,7 @@ if plotFlag
     
     legend([h_tot, h_trans, h_rot, h_a], ...
         {'Total', 'Trans.', 'Rot.', '+mass'})
-    %keyboard
+    % keyboard
 end
 
 end

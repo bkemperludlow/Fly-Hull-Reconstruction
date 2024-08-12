@@ -53,7 +53,8 @@ if pertFlag
     pulseStrength = params.pulseStrength ;
     
     if ~isinteger(pulseEnd)
-        keyboard
+        pulseEnd = 1 ; 
+        % keyboard
     end
 end
 % pin angle
@@ -121,7 +122,7 @@ for ind = (deltaT + 1):(length(t_wb)-1)
     ds(6) = (1/Iyy)*(-T_mean(2) - C_friction*thetaB_dot) ;  % -
     
     % add perturbation?
-    if pertFlag && (t > pulseStart) && (t < pulseEnd)
+    if pertFlag && (t_wb(ind) > pulseStart) && (t_wb(ind) <= pulseEnd)
         ds(6) = ds(6) + (pulseStrength)*cos(thetaB - pinAngle) ;
     end
     

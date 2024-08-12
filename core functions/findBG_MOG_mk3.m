@@ -125,8 +125,9 @@ for j = 1:length(tracks_struct_nonempty)
        trackID_curr = confirmedTracks(k).TrackID ;
        state_curr = confirmedTracks(k).State ;
        area_curr = confirmedTracks(k).ObjectAttributes{1}{2} ; 
-       frame_num_curr = confirmedTracks(k).UpdateTime ; 
-       
+        frame_num_curr = confirmedTracks(k).UpdateTime ; 
+        %frame_num_curr = confirmedTracks(k).Time ;  
+        
        mat_ind = find(trackIDs_unique == trackID_curr) ; 
        
        xcm_mat(frame_num_curr,mat_ind) = state_curr(1) ; 

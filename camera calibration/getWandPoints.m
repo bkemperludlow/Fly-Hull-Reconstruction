@@ -1,4 +1,4 @@
-function M = getWandPoints (radius1, radius2, xyFilename, xzFilename, yzFilename, outputCSVfile)
+function M = getWandPoints (radius1, radius2, xyFilename, xzFilename, yzFilename, outputCSVfile, saveFlag)
 % find the centers of the two spheres that make up the "easy wand"
 % calibrator.
 %
@@ -29,10 +29,10 @@ function M = getWandPoints (radius1, radius2, xyFilename, xzFilename, yzFilename
 %
 % M = getWandPoints (17, 45, 'xy.cin', 'xz.cin', 'yz.cin', 'wandPoints.csv') ;
 %
-tic 
-spmd
-    LoadPhantomLibraries
-end
+tic
+% spmd
+%     LoadPhantomLibraries
+% end
 
 if (isempty(radius1))
     radius1 = 17 ;
@@ -42,8 +42,17 @@ if (isempty(radius2))
     radius2 = 45 ;
 end
 
-isTif = strcmp(xyFilename(end-3:end),'.tif') ;
-isCin = strcmp(xyFilename(end-3:end),'.cin') ;
+if ~exist('saveFlag', 'var') || isempty(saveFlag)
+    saveFlag = true ;
+end
+
+% look at tracked wand points?
+debugFlag = false ;
+
+% get file type
+[~, ~, xyFileExt] = fileparts(xyFilename) ;
+isTif = strcmp(xyFileExt,'.tif') ;
+isCin = strcmp(xyFileExt,'.cin') | strcmp(xyFileExt,'.cine');
 
 if (isTif)
     info1=imfinfo(xyFilename);
@@ -59,6 +68,9 @@ if (isTif)
     md1 = [] ;
     md2 = [] ;
     md3 = [] ;
+    imHeights = [info1.Height ; info2.Height ; info3.Height] ; 
+    imWidths = [info1.Width ; info2.Width ; info3.Width] ; 
+   
 elseif (isCin) % read cin metadata
     md1 = getCinMetaData(xyFilename) ;
     md2 = getCinMetaData(yzFilename) ;
@@ -77,10 +89,14 @@ elseif (isCin) % read cin metadata
     info2 = [] ;
     info3 = [] ;
     
-    if (md1.firstImage~=md2.firstImage || md1.firstImage~=md3.firstImage)
-        error('movies should have the same time axis. check this.') ;
-    end
-    Nim = md1.lastImage - md1.firstImage + 1 ;
+   % if (md1.firstImage~=md2.firstImage || md1.firstImage~=md3.firstImage)
+   %     error('movies should have the same time axis. check this.') ;
+   % end
+   Nim = md1.lastImage - md1.firstImage + 1 ;
+   
+   imHeights = [md1.height ; md2.height ; md3.height] ; 
+   imWidths = [md1.width ; md2.width ; md3.width] ; 
+   % Nim = 720;
     %Nim = 1271 ;
 else
     error ('Movie file type can be either TIF or CIN. Aborting.')
@@ -92,7 +108,7 @@ centers_xz = zeros(Nim,4);
 
 good = false(Nim,1) ; % keeps the indices where we had all circles in all frames
 
-parfor i=1:Nim
+parfor i=1:Nim %parfor i=1:Nim
     disp(i) ;
     % read images
     if (isTif)
@@ -156,7 +172,7 @@ parfor i=1:Nim
         radiixz   = [radiixz(2),radiixz(1)]; %#ok<NASGU>
     end
     
-    if (0) 
+    if debugFlag
         figure(1) ; clf; %#ok<UNRCH>
         subplot(1,3,2) ; imshow(im1) ; hold on ; viscircles(centersxy(1,:),radiixy(1),'edgecolor','g') ;  viscircles(centersxy(2,:),radiixy(2),'edgecolor','r') ;title('xy')
         subplot(1,3,3) ; imshow(im2) ; hold on ; viscircles(centersyz(1,:),radiiyz(1),'edgecolor','g') ;  viscircles(centersyz(2,:),radiiyz(2),'edgecolor','r') ; title('yz');
@@ -168,7 +184,7 @@ parfor i=1:Nim
     centers_xy(i,:) = [centersxy(1,:), centersxy(2,:)] ;
     centers_yz(i,:)=  [centersyz(1,:), centersyz(2,:)] ;
     centers_xz(i,:) = [centersxz(1,:), centersxz(2,:)] ;
-
+    
 end
 
 %redefine cine data after parfor loop
@@ -203,13 +219,13 @@ M(:,7)  = centers_xz(1:count,3);
 M(:,9)  = centers_yz(1:count,3);
 M(:,11) = centers_xy(1:count,3);
 
-M(:,2)  = 512 - centers_xz(1:count,2) + 1;
-M(:,4)  = 512 - centers_yz(1:count,2) + 1;
-M(:,6)  = 512 - centers_xy(1:count,2) + 1;
+M(:,2)  = imHeights(3) - centers_xz(1:count,2) + 1;
+M(:,4)  = imHeights(2) - centers_yz(1:count,2) + 1;
+M(:,6)  = imHeights(1) - centers_xy(1:count,2) + 1;
 
-M(:,8)  = 512 - centers_xz(1:count,4) + 1;
-M(:,10) = 512 - centers_yz(1:count,4) + 1;
-M(:,12) = 512 - centers_xy(1:count,4) + 1;
+M(:,8)  = imHeights(3) - centers_xz(1:count,4) + 1;
+M(:,10) = imHeights(2) - centers_yz(1:count,4) + 1;
+M(:,12) = imHeights(1) - centers_xy(1:count,4) + 1;
 
 % close cin files if needed
 if (~isTif)
@@ -218,14 +234,16 @@ if (~isTif)
     myCloseCinFile(md3.cindata) ;
 end
 
-
-% save data to the same folder as the movies
-if (~exist('outputCSVfile', 'var'))
-    outputCSVfile = [] ;
+if saveFlag
+    % save data to the same folder as the movies
+    if (~exist('outputCSVfile', 'var'))
+        outputCSVfile = [] ;
+    end
+    
+    if (~isempty(outputCSVfile)) && (~strcmp(outputCSVfile(end-3:end),'.csv'))
+        dlmwrite([outputCSVfile '.csv'],M) ;
+    else
+        dlmwrite(outputCSVfile,M) ;
+    end
 end
-
-if (~isempty(outputCSVfile)) && (~strcmp(outputCSVfile(end-3:end),'.csv'))
-    dlmwrite([outputCSVfile '.csv'],M) ;
-else
-    dlmwrite(outputCSVfile,M) ;
 end

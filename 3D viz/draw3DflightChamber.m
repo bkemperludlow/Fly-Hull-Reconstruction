@@ -107,7 +107,8 @@ for i = 1:N_frame_pieces
      
      h_frame_array(i) = patch('Vertices',vert_curr,'Faces',Faces,...
         'FaceVertexCData',repmat(rgbFrame,size(Faces,1), 1),...
-        'FaceColor','flat', 'lineStyle',lineStyleStr,'LineWidth',lineWidth) ;
+        'FaceColor','flat', 'lineStyle',lineStyleStr,...
+        'LineWidth',lineWidth) ;
      set(h_frame_array(i),'FaceAlpha',objAlpha,'EdgeAlpha',objAlpha)
 end
 
@@ -158,8 +159,10 @@ if coilFlag
         h_annulus_array(2*j-1) = h1 ;
         % draw circle borders around annulus (if we use the patch edge we get
         % an annoying line where the circles close)
-        h_line_array(4*j-3) = plot3(Xo1, Yo1, Zo1, 'k-','LineWidth',coilBorderLW) ;
-        h_line_array(4*j-2) = plot3(Xi1, Yi1, Zi1, 'k-','LineWidth',coilBorderLW) ;
+        h_line_array(4*j-3) = plot3(Xo1, Yo1, Zo1, 'k-',...
+            'LineWidth',coilBorderLW) ;
+        h_line_array(4*j-2) = plot3(Xi1, Yi1, Zi1, 'k-',...
+            'LineWidth',coilBorderLW) ;
         
         % --------------------------------------------------
         % next draw bottom annulus on bottom face of chamber
@@ -177,8 +180,10 @@ if coilFlag
             'lineStyle','none') ;
         set(h2,'FaceAlpha',objAlpha,'EdgeAlpha',objAlpha)
         h_annulus_array(2*j) = h2 ;
-        h_line_array(4*j-1) = plot3(Xo2, Yo2, Zo2, 'k-','LineWidth',coilBorderLW) ;
-        h_line_array(4*j) = plot3(Xi2, Yi2, Zi2, 'k-','LineWidth',coilBorderLW) ;
+        h_line_array(4*j-1) = plot3(Xo2, Yo2, Zo2, 'k-',...
+            'LineWidth',coilBorderLW) ;
+        h_line_array(4*j) = plot3(Xi2, Yi2, Zi2, 'k-',...
+            'LineWidth',coilBorderLW) ;
         
         % finally, draw cylindrical patch that connects the two
         [Xc, Yc, Zc ] = cylinder(cylinderRadius, resolution) ;

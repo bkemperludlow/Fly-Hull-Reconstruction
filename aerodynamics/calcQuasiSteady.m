@@ -30,16 +30,28 @@ frames = (data.params.startTrackingTime : data.params.endTrackingTime) ;
 dt = (1/data.params.fps) ;
 t = dt.*frames ; % seconds
 
-% wing angles (in radians)
-wingAngRight = DEG2RAD.*(data.anglesBodyFrame(:,[PHIR, THETAR, ETAR])) ;
-wingAngLeft  = DEG2RAD.*(data.anglesBodyFrame(:,[PHIL, THETAL, ETAL])) ;
-
 % body center of mass (in meters)
 bodyCM = (data.params.voxelSize) .* (data.bodyCM) ;
 
-% body euler angles (in radians)
-bodyYPR = DEG2RAD .* (data.anglesLabFrame(:,[PHIB, THETAB, RHO])) ;
-
+% wing and body euler angles. smooth or not?
+if smoothFlag
+    % wing angles (in radians)
+    [~, wingAngRight, ~, ~, ~ ] = smoothWingAngles(data, 'R') ;
+    [~, wingAngLeft, ~, ~, ~ ] = smoothWingAngles(data, 'L') ;
+    wingAngRight = DEG2RAD.*wingAngRight ;
+    wingAngLeft  = DEG2RAD.*wingAngLeft ;
+    
+    % body euler angles (in radians)
+    [pitchSmooth, yawSmooth, rollSmooth] = smoothBodyAngles(data) ;
+    bodyYPR = DEG2RAD .* [yawSmooth, pitchSmooth, rollSmooth] ;
+else
+    % wing angles (in radians)
+    wingAngRight = DEG2RAD.*(data.anglesBodyFrame(:,[PHIR, THETAR, ETAR])) ;
+    wingAngLeft  = DEG2RAD.*(data.anglesBodyFrame(:,[PHIL, THETAL, ETAL])) ;
+    
+    % body euler angles (in radians)
+    bodyYPR = DEG2RAD .* (data.anglesLabFrame(:,[PHIB, THETAB, RHO])) ;
+end
 % -----------------------------
 %% calculate forces
 qs_force_structR =quasiSteadyForceAll(wingAngRight, t, 'R', ...
