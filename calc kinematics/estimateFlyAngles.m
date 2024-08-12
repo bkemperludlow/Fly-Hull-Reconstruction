@@ -20,13 +20,21 @@ folderName = ['Expr_' num2str(exprNum) '_mov_' movNumStr] ;
 datapath = fullfile(savePath, folderName) ;
 
 datafilename_test = fullfile(datapath, [folderName '_test.mat']) ;
+%{
 datafilename_cleaned = fullfile(datapath, [folderName '_cleaned.mat']) ;
-if exist(datafilename_cleaned,'file')
+datafilename_refined = fullfile(datapath, [folderName '_iterRefine.mat']) ;
+datafilename_corrected = fullfile(datapath,['Expr' num2str(exprNum) 'mov' movNumStr,'_Data_manually_corrected.mat']);
+if exist(datafilename_corrected,'file')
+    datafilename = datafilename_corrected;
+elseif exist(datafilename_refined, 'file')
+    datafilename = datafilename_refined;
+elseif exist(datafilename_cleaned,'file')
     datafilename = datafilename_cleaned ;
-else
+else 
+%}
     datafilename = datafilename_test ;
-end
-
+%end
+    
 %cd(datapath)
 
 if (exist(datafilename,'file') == 2) && ~overWriteFlag

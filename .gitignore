@@ -7,15 +7,9 @@ old/
 */_old/
 */temp*/
 */JEB_Theriault_etal_2014/
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
+
 */PhMatlabSDK/*
 */PhantomSDK/*
->>>>>>> Stashed changes
-=======
-*/PhMatlabSDK/
->>>>>>> bc950112c320b0111826a736bdf5fb965af1e398
 
 # also don't track the following file types:
 *.asv

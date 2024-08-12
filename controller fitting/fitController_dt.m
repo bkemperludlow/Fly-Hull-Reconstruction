@@ -11,10 +11,10 @@ function [controller_fit_struct, h] = fitController_dt(rootPath, MovNum, ...
 % --------------------------------
 %% inputs
 if ~exist('rootPath','var') || isempty(rootPath)
-    rootPath = 'D:\Fly Data\Test\14_21102020\'   ; %'D:\Fly Data\VNC Motor Lines\52_19022019\' ;
+    rootPath = 'E:\Opto Mechanical\170_06022024\'   ; %'D:\Fly Data\VNC Motor Lines\52_19022019\' ;
 end
 if ~exist('MovNum','var') || isempty(MovNum)
-    MovNum = 1 ; %5 ; % 14, 17
+    MovNum = 2 ; %5 ; % 14, 17
 end
 if ~exist('pertType','var') || isempty(pertType)
     % what type of perturbation (i.e. yaw, pitch, roll) are we fitting?

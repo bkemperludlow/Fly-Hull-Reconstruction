@@ -9,12 +9,14 @@
 %% set parameters/paths
 % -----------------------------
 % set path for experiment folder wherein analysis is still needed
-pathToWatch = 'D:\Box Sync Old\Opto Silencing\99_23032024\' ;% 'D:\Fly Data\VNC MN Chrimson\33_16062019\' ; 
+
+pathToWatch = 'E:\VNC MN Chrimson\45_16082019\' ; 
 
 % do full analysis, new reconstruction method, just angles, or other?
-analysisType = 'full' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
+analysisType = 'clean_wings' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
 
-clustFlag = false ; % shich version of analysis script to run
+
+clustFlag = true ; % shich version of analysis script to run
 largePertFlag = false  ; % is it a large perturbation?
 removeLegsFlag = true ; % try to remove legs in binary threshold?
 alignBBoxFlag = false ; % try to align images to avoid clipping?
@@ -26,7 +28,9 @@ folderSplit = strsplit(pathSplit{end-1},'_') ;
 ExprNum = str2double(folderSplit{1}) ;
 
 % set movie numbers that need to be analyzed
-MovNum = 102:171 ; %[10, 20, 21, 34, 37, 44, 59, 66] ; %
+
+MovNum = [30,51] ; %
+
 Nmovies = length(MovNum) ;
 
 % run analysis of movies
@@ -88,7 +92,7 @@ for k = 1:Nmovies
             % ---------------------------------------------------
             % load data
             suffixStr_out = '_cleaned' ; 
-            suffixStr_in = '_new' ; %'_test' ; 
+            suffixStr_in = '_cleaned' ; %'_test' ; 
             loadResultsFlag = true ; 
             [data_in, analysisOutput, data_out_filename, dataPath,...
                 errorFlag] = hierarchicalLoadData(pathStruct, MovNum(k), ...

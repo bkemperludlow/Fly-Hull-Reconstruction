@@ -10,6 +10,7 @@ function watchForVids_mk9(pathToWatch, cinFileSize)
 % ------------------------------------------------------
 % check input(s)
 if ~exist('pathToWatch','var') || isempty(pathToWatch)
+
     pathToWatch = 'D:\Box Sync Old\Opto Mechanical\197_10082024' ; %pwd ;
 end
 
@@ -24,13 +25,16 @@ end
 % search expression for movie file names 
 % Han : added a new search expression for phantom new format
 
+
 fnExp = ['(?<camName>[xyz]{2})_(?<movieNum>\d+)|' ...
     '(?<camName>[xyz]{2})_(?<dayNameStr>\w+) (?<monthStr>\w+) ' ...
     '(?<day>\d+) (?<year>\d+) (?<hour>\d+) (?<minute>\d+) ' ...
     '(?<second>\d+.\d+)|'...
     '(?<camName>[xyz]{2})_Y(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})'...
+
     'H(?<hour>\d{2})(?<minute>\d{2})(?<second>\d+.\d+)|'...
     '(?<camName>[xyz]{2})_Y(?<year>\d{4})(?<month>\d{2}) (?<day>\d{1})'...
+
     'H(?<hour>\d{2})(?<minute>\d{2})(?<second>\d+.\d+)']; 
 
 % -------------------------------------------------
@@ -60,7 +64,7 @@ if ~exist('cinFileSize','var') || isempty(cinFileSize)
         cinFileSize = cinFileSizeDefault ; % expected file size (should make this an input variable up top or something...)
     end
 end
- 
+
 % also make an estimate on save speed -- this was just determined roughly,
 % and will change based on eg speed of ethernet connection
 saveSpeed = 1.0e8 ; % bytes per 5 seconds (5 seconds is the pause in while loop)
@@ -296,8 +300,10 @@ function add2queue(xy_fn, xz_fn, yz_fn)
             yzBytes < cinFileSize) && (byteCounter < byteCountMax)
         % give a little time to allow save to progress
         pause(5)
+
         % change the correct filenames back to wrong ones so that the
         % script is happy
+
         % get current directory for camera movie files
         xydir = dir(fullfile(pathToWatch, ['xy*' movFileExt])) ;
         xzdir = dir(fullfile(pathToWatch, ['xz*' movFileExt])) ;
