@@ -8,8 +8,8 @@ old/
 */temp*/
 */JEB_Theriault_etal_2014/
 
-*/PhMatlabSDK/*
-*/PhantomSDK/*
+PhMatlabSDK/
+PhantomSDK/
 
 # also don't track the following file types:
 *.asv
