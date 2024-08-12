@@ -69,7 +69,10 @@ ub = [] ; %[ 2  0.1  4];
 % ---------------------------------------------------------------------
 %% perform fit and assign outputs 
 [x, resnorm, residual, ~, ~, ~, J] = ...
+
     lsqcurvefit(controllerEq, paramGuess, bodyData,wingAngleVals',...
+
+
     lb,ub,options) ;
 
 % ----------------------------------------------------------------

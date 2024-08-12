@@ -3,8 +3,8 @@
 % (with stills) as walls of a chamber with 3D-reconstructed flies in the 
 % middle. this is an attempt to clean up "perturbationFigure.m" 
 %{
-rootPath = 'D:\Fly Data\Test\02_06062018\' ; 
-MovNum = 10 ;
+rootPath = 'D:\Box Sync Old\Haltere Experiment\69_250720238\' ; 
+MovNum = 1 ;
 snapshotTimes = [-0.02 , 0.0 , 0.02 , 0.04] ; 
 pertType = 'Pitch' ;
 

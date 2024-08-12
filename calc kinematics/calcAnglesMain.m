@@ -10,7 +10,9 @@ if ~exist('dataPath','var') || isempty(dataPath)
     %mFilePath = mfilename('fullpath') ;
     %[filterSpec,~,~] = fileparts(mFilePath) ;
     %filterSpec =  'D:\Fly Data\VNC MN Chrimson\03_06112017\Analysis\Unsorted\Expr_3_mov_000\' ; 
+
     filterSpec = 'E:\VNC Motor Lines\156_20122023\Analysis\Unsorted\Expr_156_mov_001\' ;
+
     %filterSpec = 'D:\Fly Data\VNC MN Chrimson\52_09112019\Analysis\Unsorted\Expr_52_mov_008\' ; 
     filepath_cell = uipickfiles('FilterSpec',filterSpec,...
         'Type',{'*.mat', 'MAT-files' },'NumFiles',1) ;

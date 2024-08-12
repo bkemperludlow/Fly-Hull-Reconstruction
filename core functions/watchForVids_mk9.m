@@ -10,15 +10,31 @@ function watchForVids_mk9(pathToWatch, cinFileSize)
 % ------------------------------------------------------
 % check input(s)
 if ~exist('pathToWatch','var') || isempty(pathToWatch)
-    pathToWatch = 'D:\Box Sync Old\Opto Mechanical\96_04032023\' ; %pwd ;
+
+    pathToWatch = 'D:\Box Sync Old\Opto Mechanical\197_10082024' ; %pwd ;
 end
 
 % search expression for movie file names
+% fnExp = ['(?<camName>[xyz]{2})_(?<movieNum>\d+)|' ...
+%     '(?<camName>[xyz]{2})_(?<dayNameStr>\w+) (?<monthStr>\w+) ' ...
+%     '(?<day>\d+) (?<year>\d+) (?<hour>\d+) (?<minute>\d+) ' ...
+%     '(?<second>\d+.\d+)|'...
+%     '(?<camName>[xyz]{2})_Y(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})'...
+%     'H(?<hour>\d{2})(?<minute>\d{2})(?<second>\d+.\d+)']; 
+
+% search expression for movie file names 
+% Han : added a new search expression for phantom new format
+
+
 fnExp = ['(?<camName>[xyz]{2})_(?<movieNum>\d+)|' ...
     '(?<camName>[xyz]{2})_(?<dayNameStr>\w+) (?<monthStr>\w+) ' ...
     '(?<day>\d+) (?<year>\d+) (?<hour>\d+) (?<minute>\d+) ' ...
     '(?<second>\d+.\d+)|'...
     '(?<camName>[xyz]{2})_Y(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})'...
+
+    'H(?<hour>\d{2})(?<minute>\d{2})(?<second>\d+.\d+)|'...
+    '(?<camName>[xyz]{2})_Y(?<year>\d{4})(?<month>\d{2}) (?<day>\d{1})'...
+
     'H(?<hour>\d{2})(?<minute>\d{2})(?<second>\d+.\d+)']; 
 
 % -------------------------------------------------
@@ -284,6 +300,9 @@ function add2queue(xy_fn, xz_fn, yz_fn)
             yzBytes < cinFileSize) && (byteCounter < byteCountMax)
         % give a little time to allow save to progress
         pause(5)
+
+        % change the correct filenames back to wrong ones so that the
+        % script is happy
 
         % get current directory for camera movie files
         xydir = dir(fullfile(pathToWatch, ['xy*' movFileExt])) ;

@@ -3,7 +3,9 @@
 %==========================================================================
 
 % this is the root folder that we want to have our expt in
+
 rootPath = 'D:\Box Sync Old\Haltere Experiment\' ; 
+
 readmePath = 'D:\' ;
 readmeFilename_orig = 'README-template.txt' ; 
 readmeFilename_new = 'README.txt' ;

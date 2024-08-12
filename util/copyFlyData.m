@@ -2,11 +2,13 @@
 % script to transfer fly data to an external hard drive. only takes
 % analysis, mp4s, and README
 %--------------------------------------------------------------------------
+
 sourcePath = 'D:\VNC Motor Lines\' ; %'D:\Box Sync Old\VNC Motor Lines\' ;
 destinationPath = 'C:\Users\Kemper\Documents\Fly Experiment Data\VNC Motor Lines\' ; % 'F:\Fly Data\VNC Motor Lines\' ;
 
 % which experiments to copy over
 ExprNums = [24:30,33:37,64,65,71:73,77,79:86,102:111,126:129,133:151]  ;
+
 
 % files/folders to grab
 suffix_cell = {'mp4','Analysis','README.txt', ...

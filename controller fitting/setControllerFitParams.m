@@ -51,6 +51,7 @@ K_guessYaw   = 0.0 ; % deg. trying to avoid using this
 %% time range for controller fit
 % read out start time of magnetic pulse and convert to ms
 pulseStartMS = 1000*pulseTiming(1) ;
+
 %pulseEndMS = 1000*pulseTiming(2) ;
 %pulseDurMS = pulseEndMS - pulseStartMS ;
 
@@ -61,6 +62,7 @@ pulseStartMS = 1000*pulseTiming(1) ;
 
 % NB: for some experiments with longer perturbations, will need wider fit
 % windows
+
 
 if pulseStartMS > 0
     pitchFitRangeMS = [pulseStartMS - 10, 50] ; % +45
@@ -73,6 +75,7 @@ else
 end
 
 %{
+
 if pulseDurMS < 10
     pitchFitRangeMS = [pulseStartMS - 10, pulseStartMS + 35] ;
     rollFitRangeMS = [pulseStartMS - 10, pulseStartMS + 35] ; % +40
@@ -82,7 +85,9 @@ else
     rollFitRangeMS = [pulseStartMS - 10, pulseStartMS + 50] ; % +45
     yawFitRangeMS = [pulseStartMS - 10, pulseStartMS + 55]  ;
 end
+
 %}
+
 
 % ----------------------------------------------
 %% misc. params for different fit types

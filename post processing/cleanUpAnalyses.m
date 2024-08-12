@@ -9,10 +9,12 @@
 %% set parameters/paths
 % -----------------------------
 % set path for experiment folder wherein analysis is still needed
+
 pathToWatch = 'E:\VNC MN Chrimson\45_16082019\' ; 
 
 % do full analysis, new reconstruction method, just angles, or other?
 analysisType = 'clean_wings' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
+
 
 clustFlag = true ; % shich version of analysis script to run
 largePertFlag = false  ; % is it a large perturbation?
@@ -26,7 +28,9 @@ folderSplit = strsplit(pathSplit{end-1},'_') ;
 ExprNum = str2double(folderSplit{1}) ;
 
 % set movie numbers that need to be analyzed
+
 MovNum = [30,51] ; %
+
 Nmovies = length(MovNum) ;
 
 % run analysis of movies

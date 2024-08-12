@@ -116,11 +116,13 @@ bodyAngleVel = differentiate(c_bodyAngle, t - deltaT) ;
 controlPred = (K_i * deltaBodyAngle) + (K_p * bodyAngleVel) + K ;
 
 % fit confidence interval
+
 if strcmp(pertTypeStr, 'Pitch')
     [upper, lower, t_CI] = get_controllerFit_CI_pitch(controller_fit_struct) ;
     CIFlag = true ; 
 elseif strcmp(pertTypeStr, 'Roll')
     [upper, lower, t_CI] = get_controllerFit_CI_roll(controller_fit_struct) ;
+
     CIFlag = true ; 
 else
     upper = [] ; 
