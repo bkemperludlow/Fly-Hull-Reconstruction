@@ -4,44 +4,38 @@
 %{
 fig = figure('Position',[2239, 346, 560, 420])  ;
 hold on
-ax = gca ; 
+ax = gca ;
 parent = hgtransform('Parent',ax);
-grp = hgtransform('Parent',parent) ; 
+grp = hgtransform('Parent',parent) ;
 %}
 % -------------------------------------------------------------------------
 function grp = draw3DoptoLED(ax, parent, ledLength, ledRadius, beamColorMap, ...
     beamLength, center, direction, lineStyleStr, objAlpha,...
-    resolution) 
-    
+    resolution, ledBodyColor, lensColor)
+
 % -------------------
 %% inputs and params
 if ~exist('lineStyleStr', 'var') || isempty(lineStyleStr)
-   lineStyleStr = 'none' ;  
+    lineStyleStr = 'none' ;
 end
 if ~exist('objAlpha', 'var') || isempty(objAlpha)
-   objAlpha = 1.0 ;  
+    objAlpha = 1.0 ;
 end
 if ~exist('resolution', 'var') || isempty(resolution)
-   resolution = 100 ;  
+    resolution = 100 ;
+end
+if ~exist('ledBodyColor', 'var') || isempty(ledBodyColor)
+    ledBodyColor = 0.1*[1, 1, 1] ;
+end
+if ~exist('lensColor', 'var') || isempty(lensColor)
+    lensColor = [0.6196, 0.7922, 0.8824] ; % light blue
 end
 
 % ---------------
 % other params
-%lineWidth = 0.5 * lineScale ; 
-ledBodyColor = 0.1*[1, 1, 1] ; 
-lensColor = [0.6196, 0.7922, 0.8824] ; % light blue 
-
+%lineWidth = 0.5 * lineScale 
 beamRadius = 0.75*ledRadius ;
-beamAlpha = 0.25 ; 
-
-% ----------------------
-% check colormap input
-try
-    valTest = brewermap([],beamColorMap) ; 
-catch
-    disp('invalid colormap selection')
-    keyboard
-end
+beamAlpha = 0.25 ;
 
 % --------------------
 % get axis info
@@ -53,7 +47,7 @@ hold on ;
 % body is a cylinder that sits on the face of the camera body pointing
 % along the positive x axis
 [X, Y, Z ] = cylinder(ledRadius, resolution) ;
-Z = Z * ledLength ; 
+Z = Z * ledLength ;
 C = zeros([size(X) 3]) ;
 C(:,:,1) = ledBodyColor(1) ;
 C(:,:,2) = ledBodyColor(2) ;
@@ -94,50 +88,63 @@ set([hLED, hLEDLens, hLEDCap], 'Parent',body_grp) ;
 
 % -----------------------------------------------------------
 %% generate beam of light coming from LED
-% this will extend upwards from the top of the lens
-[X, Y, Z ] = cylinder(beamRadius, resolution) ;
-Z = Z * (beamLength - ledLength) + ledLength ; 
-%C = zeros([size(X) 3]) ;
-%colorMat = flipud(brewermap(size(X,2),beamColorMap)) ; 
-%C(:,:,1) = repmat(colorMat(:,1),1,2)' ;
-%C(:,:,2) = repmat(colorMat(:,2),1,2)' ;
-%C(:,:,3) = repmat(colorMat(:,3),1,2)' ;
-hBeam = surf(X, Y, Z) ;
-set(hBeam,'lineStyle','none') ;
-%set(hBeam,'CData',C) ;
-set(hBeam,'FaceColor','interp') ;
-set(hBeam,'FaceAlpha',beamAlpha,'EdgeAlpha',beamAlpha)
-colormap(flipud(brewermap([],beamColorMap)))
+if ~strcmpi(beamColorMap,'none')
+    
+    % ----------------------
+    % check colormap input
+    try
+        valTest = brewermap([],beamColorMap) ;
+    catch
+        disp('invalid colormap selection')
+        keyboard
+    end
 
-% give parentage to full group
-beam_grp = hgtransform('Parent',grp) ;
-set(hBeam, 'Parent',beam_grp) ; 
-
+    % this will extend upwards from the top of the lens
+    [X, Y, Z ] = cylinder(beamRadius, resolution) ;
+    Z = Z * (beamLength - ledLength) + ledLength ;
+    %C = zeros([size(X) 3]) ;
+    %colorMat = flipud(brewermap(size(X,2),beamColorMap)) ;
+    %C(:,:,1) = repmat(colorMat(:,1),1,2)' ;
+    %C(:,:,2) = repmat(colorMat(:,2),1,2)' ;
+    %C(:,:,3) = repmat(colorMat(:,3),1,2)' ;
+    hBeam = surf(X, Y, Z) ;
+    set(hBeam,'lineStyle','none') ;
+    %set(hBeam,'CData',C) ;
+    set(hBeam,'FaceColor','interp') ;
+    set(hBeam,'FaceAlpha',beamAlpha,'EdgeAlpha',beamAlpha)
+    colormap(flipud(brewermap([],beamColorMap)))
+    
+    % give parentage to full group
+    beam_grp = hgtransform('Parent',grp) ;
+    set(hBeam, 'Parent',beam_grp) ;
+end
 % -----------------------------------------------------------
 %% perform group translation/rotation
 % NB: cylindrical axis starts as z axis
 direction_hat = direction./norm(direction) ; % make sure it's normalized
-z_hat = [0, 0, 1] ; 
-rot_ax = cross(z_hat, direction_hat) ; 
+z_hat = [0, 0, 1] ;
+rot_ax = cross(z_hat, direction_hat) ;
 % for at least one camera, this will be parallel, giving zero cross product
-if norm(rot_ax) <= 0 
-    rot_ax = [1, 0, 0] ; 
+if norm(rot_ax) <= 0
+    rot_ax = [1, 0, 0] ;
 else
     rot_ax = rot_ax./norm(rot_ax) ;
 end
-rot_ang = acos(dot(z_hat, direction_hat)) ; 
+rot_ang = acos(dot(z_hat, direction_hat)) ;
 
 % make hg transforms
 R = makehgtform('axisrotate',rot_ax, rot_ang) ; % rotation
 T = makehgtform('translate', center) ;  % translation
 
-set(grp, 'Matrix', T*R) ; 
+set(grp, 'Matrix', T*R) ;
 
 % -----------------------------------------------------------
 %% set material properties
 material([hLED, hLEDLens, hLEDCap],'shiny')
-set([hLED, hLEDLens, hLEDCap], 'ambientStrength',.9);  
-set(hBeam, 'ambientStrength',1.0);  
+set([hLED, hLEDLens, hLEDCap], 'ambientStrength',.9);
+if exist('hBeam','var')
+    set(hBeam, 'ambientStrength',1.0);
+end
 % reset figure's hold properties
 if (~wasOnHold)
     hold off ;

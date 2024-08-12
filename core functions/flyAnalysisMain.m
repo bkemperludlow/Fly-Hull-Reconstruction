@@ -111,8 +111,11 @@ for camNum = [XY, XZ, YZ]
     cinFilenames{camNum} = fullfile(cDir(c_ind).folder, cDir(c_ind).name) ; %[dataPath strcat('\xy_',movNumStr, movFileExt)] ;
     
     % index and filename for xml
-    x_ind = contains({xDir.name}, cam_prefixes{camNum}) ; 
-    xmlFilenames{camNum} = fullfile(xDir(x_ind).folder, xDir(x_ind).name) ;
+    if ~isempty(xDir)
+        x_ind = contains({xDir.name}, cam_prefixes{camNum}) ; 
+        xmlFilenames{camNum} = fullfile(xDir(x_ind).folder, ...
+            xDir(x_ind).name) ;
+    end
 end
 
 % ------------------------------------------------------------
@@ -175,12 +178,14 @@ try
     if falseTriggerFlag
         %moves false trigger files into corresponding analysis folder
         movefile(resultsPath, possibleFTPath) ;
-        movefile(cinFilenames{XY}, fullfile(possibleFTPath, prefixStr)) ;
-        movefile(cinFilenames{XZ}, fullfile(possibleFTPath, prefixStr)) ;
-        movefile(cinFilenames{YZ}, fullfile(possibleFTPath, prefixStr)) ;
-        movefile(xmlFilenames{XY}, fullfile(possibleFTPath, prefixStr)) ;
-        movefile(xmlFilenames{XZ}, fullfile(possibleFTPath, prefixStr)) ;
-        movefile(xmlFilenames{YZ}, fullfile(possibleFTPath, prefixStr)) ;
+        for cam = [XY, XZ, YZ]
+            movefile(cinFilenames{cam}, fullfile(possibleFTPath,...
+                prefixStr)) ;
+            if ~isempty(xmlFilenames{cam})
+                movefile(xmlFilenames{cam}, fullfile(possibleFTPath, ...
+                    prefixStr)) ;
+            end
+        end
         close all ;
         data = struct() ; 
         return ; %continue

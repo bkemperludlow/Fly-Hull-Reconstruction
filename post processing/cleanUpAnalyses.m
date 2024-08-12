@@ -4,14 +4,15 @@
 %  analysisType options: 'new_recon' | 'full' | 'full_new' | 'just_angles'
 %   | 'stop_wings' | 'clean_wings'  | 'refine_wing_vecs' | 
 %    'redo_hull_analysis' | 'swap_wings' | 'extreme_roll' | 'refine_chord'
+%   | 'correct_ahat' | 'check_ignore_frames'
 % -------------------------------------------------------------------------
 %% set parameters/paths
 % -----------------------------
 % set path for experiment folder wherein analysis is still needed
-pathToWatch = 'D:\Fly Data\Opto Silencing\18_11052019\' ;% 'D:\Fly Data\VNC MN Chrimson\33_16062019\' ; 
+pathToWatch = 'D:\Box Sync Old\Opto Silencing\99_23032024\' ;% 'D:\Fly Data\VNC MN Chrimson\33_16062019\' ; 
 
 % do full analysis, new reconstruction method, just angles, or other?
-analysisType = 'clean_wings' ; % 'extreme_roll' ; %'clean_wings' ; 
+analysisType = 'full' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
 
 clustFlag = false ; % shich version of analysis script to run
 largePertFlag = false  ; % is it a large perturbation?
@@ -25,7 +26,7 @@ folderSplit = strsplit(pathSplit{end-1},'_') ;
 ExprNum = str2double(folderSplit{1}) ;
 
 % set movie numbers that need to be analyzed
-MovNum = [41] ; %[10, 20, 21, 34, 37, 44, 59, 66] ; %
+MovNum = 102:171 ; %[10, 20, 21, 34, 37, 44, 59, 66] ; %
 Nmovies = length(MovNum) ;
 
 % run analysis of movies
@@ -223,6 +224,10 @@ for k = 1:Nmovies
                 [data, swapFlag] = checkWingSwap(data, largePertFlag) ;
             end
             
+            % -----------------------------------------------------
+            % see if this has made any "ignoreFrames" usable now 
+            data = checkIgnoreFrames(data) ;
+            
             % ---------------------------
             % re-calculate angles
             fprintf('Re-calculating angles for movie %d... \n', MovNum(k))
@@ -241,8 +246,8 @@ for k = 1:Nmovies
         case 'extreme_roll'
             % -------------------------------------------------------------
             % load data 
-            suffixStr_out = '_cleaned' ;  
-            suffixStr_in  = '_cleaned' ; 
+            suffixStr_out = '_cleaned' ;  % '_Data_manually_corrected' ; %
+            suffixStr_in  = '_cleaned' ;  % '_Data_manually_corrected' ; %
             [data_in, ~, data_out_filename, dataPath, errorFlag] = ...
                 hierarchicalLoadData(pathStruct, MovNum(k), ...
                  suffixStr_out, suffixStr_in) ; 
@@ -268,6 +273,10 @@ for k = 1:Nmovies
             fprintf('Refining roll estimate for movie %d... \n', MovNum(k))
             [data, pseudoRollSmooth, swap_idx, check_idx] = ...
                 estimatePseudoRoll(data_in, [], largePertFlag) ; 
+            
+            % -----------------------------------------------------
+            % see if this has made any "ignoreFrames" usable now 
+            data = checkIgnoreFrames(data) ;
             
             % ---------------------------
             % re-calculate angles
@@ -315,6 +324,91 @@ for k = 1:Nmovies
             tic
             data = refineChordVectorSam(data, 'left', largePertFlag) ; 
             toc
+            % ---------------------------
+            % re-calculate angles
+            fprintf('Re-calculating angles for movie %d... \n', MovNum(k))
+            
+            save(data_out_filename, 'data')
+            data = calcAnglesMain(data_out_filename, largePertFlag, ...
+                true, true, suffixStr_out) ;
+            close all
+        %% ---------------------------------------------------------------
+        % Try to deal with jumps in body pitch (long body axis)
+        % ---------------------------------------------------------------
+        case 'correct_ahat'
+            % -------------------------------------------------------------
+            % load data 
+            suffixStr_out = '_cleaned' ;  
+            suffixStr_in  = '_cleaned' ; 
+            [data_in, ~, data_out_filename, dataPath, errorFlag] = ...
+                hierarchicalLoadData(pathStruct, MovNum(k), ...
+                 suffixStr_out, suffixStr_in) ; 
+            
+             if errorFlag
+                %fprintf('Could not find path for movie %d \n', MovNum(k))
+                continue
+             end
+            % -------------------------------------------
+            % back up the data folder (still not certain this works 100% of
+            % the time
+            fprintf('Backing up data for movie %d... \n', MovNum(k))
+            [analysisPath, fn, ext] = fileparts(dataPath) ;  
+            dataName = strjoin({fn, ext},'') ; 
+            backupPath = fullfile(analysisPath,'backup') ; 
+            if ~exist(backupPath,'dir')
+                mkdir(backupPath)
+            end
+            copyfile(dataPath, fullfile(backupPath, dataName))
+            
+            % -------------------------------------------
+            % perform large body hat correction
+            fprintf('Refining body axis estimate for movie %d... \n',...
+                MovNum(k))
+            data = correctAHat(data) ; 
+            
+            % -----------------------------------------------------
+            % see if this has made any "ignoreFrames" usable now 
+            data = checkIgnoreFrames(data) ;
+            
+            % ---------------------------
+            % re-calculate angles
+            fprintf('Re-calculating angles for movie %d... \n', MovNum(k))
+            
+            save(data_out_filename, 'data')
+            data = calcAnglesMain(data_out_filename, largePertFlag, ...
+                true, true, suffixStr_out) ;
+            close all
+        case 'check_ignore_frames'
+            % -------------------------------------------------------------
+            % load data 
+            suffixStr_out = '_cleaned' ;  
+            suffixStr_in  = '_cleaned' ; 
+            [data_in, ~, data_out_filename, dataPath, errorFlag] = ...
+                hierarchicalLoadData(pathStruct, MovNum(k), ...
+                 suffixStr_out, suffixStr_in) ; 
+            
+             if errorFlag
+                %fprintf('Could not find path for movie %d \n', MovNum(k))
+                continue
+             end
+            % -------------------------------------------
+            % back up the data folder (still not certain this works 100% of
+            % the time
+            fprintf('Backing up data for movie %d... \n', MovNum(k))
+            [analysisPath, fn, ext] = fileparts(dataPath) ;  
+            dataName = strjoin({fn, ext},'') ; 
+            backupPath = fullfile(analysisPath,'backup') ; 
+            if ~exist(backupPath,'dir')
+                mkdir(backupPath)
+            end
+            copyfile(dataPath, fullfile(backupPath, dataName))
+            
+            % -----------------------------------------------------
+            % see if any "ignoreFrames" are actually usable now
+            fprintf('Checking ignoreFrames for movie %d... \n',...
+                MovNum(k))
+            data = checkIgnoreFrames(data) ;
+            
             % ---------------------------
             % re-calculate angles
             fprintf('Re-calculating angles for movie %d... \n', MovNum(k))

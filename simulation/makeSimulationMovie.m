@@ -86,7 +86,7 @@ fly_color_scheme = 'sim' ;
 
 % pin type
 if pertFlag
-    pinType = 1 ; % pitch
+    pinType = 2 ; % pitch
 else
     pinType = 0 ; % no pin
 end
@@ -222,7 +222,7 @@ h_main = figure('units','normalized','outerposition',[0 0 1 1]) ; % full screen
 ax = axes(h_main) ;
 
 % draw 3D fly
-[flyGrp, ~, rightWingGrp, leftWingGrp, dL, ~, ~] = draw3Dfly_v3(ax, ...
+[flyGrp, ~, rightWingGrp, leftWingGrp, dL, ~, ~] = draw3Dfly(ax, ...
     scale, flyResolution, pinType, thetaB0, gridFlag, fly_color_scheme );
 
 % fly material properties

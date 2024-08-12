@@ -23,7 +23,7 @@
 
 % background images in two formats (matrix and cell). I probably only use
 % the matrix form.
-allBG   = zeros(3, 512, 512,'uint8') ; % cell(1,3) ;
+% allBG   = zeros(3, 512, 512,'uint8') ; % cell(1,3) ;
 allBGcell = cell(1,3) ;
 allXcm = cell(1,3) ;
 allYcm = cell(1,3) ;
@@ -72,7 +72,7 @@ end
 
 out1=fetchOutputs(job1) ; out2=fetchOutputs(job2) ; out3=fetchOutputs(job3) ;
 delete(job1) ; delete(job2) ; delete(job3) ;
-allBG(1,:,:) = out1{1} ; allBG(2,:,:) = out2{1} ; allBG(3,:,:) = out3{1} ;
+% allBG(1,:,:) = out1{1} ; allBG(2,:,:) = out2{1} ; allBG(3,:,:) = out3{1} ;
 allBGcell{1} = out1{1} ; allBGcell{2} = out2{1} ; allBGcell{3} = out3{1} ;
 
 allTin(1) = out1{2} ; allTin(2) = out2{2} ; allTin(3) = out3{2} ;
@@ -91,7 +91,7 @@ if isnan(tin)
     tin = min([max(allTin), 1]) ; % things get funky when the start is after 0
     tout = min(allTout) ;
 end
-
+tin = -100;
 %-----------------------------
 % test background?
 %{ 
@@ -107,7 +107,7 @@ end
 % save these results in case of error later?
 if savePointFlag
    bg_savename = fullfile(savePath, prefixStr, 'BG.mat') ;
-   save(bg_savename, 'allBG','allBGcell','allXcm','allYcm','allTin',...
+   save(bg_savename, 'allBGcell','allXcm','allYcm','allTin',...
        'allTout','tin','tout')
 end
 
@@ -118,17 +118,17 @@ tic
 
 disp('Doing binary thresholds...')
 cam = XY ;
-jobXY = batch('binaryThreshold',8,{squeeze(allBG(cam,:,:)), ...
+jobXY = batch('binaryThreshold',8,{allBGcell{cam}, ...
     cinFilenames{cam}, tin, tout, twoFlies_xy, allXcm{cam}, allYcm{cam}, ...
     removeLegsFlag, stopWingsFlag}) ;
 
 cam = XZ ;
-jobXZ = batch('binaryThreshold',8,{squeeze(allBG(cam,:,:)), ...
+jobXZ = batch('binaryThreshold',8,{allBGcell{cam}, ...
     cinFilenames{cam}, tin, tout, twoFlies_xz, allXcm{cam}, allYcm{cam}, ...
     removeLegsFlag, stopWingsFlag}) ;
 
 cam = YZ ;
-jobYZ = batch('binaryThreshold',8,{squeeze(allBG(cam,:,:)), ...
+jobYZ = batch('binaryThreshold',8,{allBGcell{cam}, ...
     cinFilenames{cam}, tin, tout, twoFlies_yz, allXcm{cam}, allYcm{cam}, ...
     removeLegsFlag, stopWingsFlag}) ;
 
@@ -144,7 +144,7 @@ if ~isempty(jobXY.Tasks.Error) || ~isempty(jobXZ.Tasks.Error) || ...
     errors_idx = [~isempty(jobTasks(1).Error) ~isempty(jobTasks(2).Error)...
         ~isempty(jobTasks(3).Error)] ;
     errors_ind = find(errors_idx) ; 
-    errors = jobTasks(errors(errors_ind(1))).Error ;
+    errors = jobTasks(errors_ind(1)).Error ;
     %disp(getReport(errors, 'basic'))
     msg = strcat('Error doing binary threshold for: ', ...
         [ ' ' cam_names_temp{errors_ind(1)} '_'  movieNum]) ;
@@ -155,7 +155,7 @@ if ~isempty(jobXY.Tasks.Error) || ~isempty(jobXZ.Tasks.Error) || ...
     fprintf(fileID, '%s\r\n', ' ') ;
     fclose(fileID) ;
     errorFlag = true ;
-    %return
+    return
 end
 
 % assign output arguments and delete jobs
@@ -202,7 +202,8 @@ disp(binThreshTime)
 %   (use frames DELTA+1 until Nimages-DELTA)
 %  -----------------------------------------------------------------------
 
-dim = all_fly_bw_xy.dim ;
+dim = max([all_fly_bw_xy.dim ; all_fly_bw_xz.dim ; all_fly_bw_yz.dim]) ; 
+%dim = all_fly_bw_xy.dim ;
 newdim = dim ;
 % newdim(1) = dim(1) - 2*DELTA ;
 % newdim(2) = 3 ; % three cams
@@ -214,29 +215,64 @@ all_fly_bw = init4D(newdim) ;
 Nimages = newdim(2) ;
 disp('Combining...')
 for k=1:Nimages
+    % ------------------
     % combine XY
     i1=XY ; i2=k ;
     ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-    all_fly_bw.mat(ind1vec, ind2vec) = getImage4D(all_fly_bw_xy, 1, i2+DELTA) ;   
+    % resize XY if need be
+    bw_xy = getImage4D(all_fly_bw_xy, 1, i2+DELTA) ;
+    if size(bw_xy,1) ~= dim(3) 
+        pad_height = round((dim(3) - size(bw_xy,1))/2) ;
+        bw_xy = padarray(bw_xy,[pad_height,0],0,'both') ; 
+    end
+    if size(bw_xy,2) ~= dim(4) 
+        pad_width = round((dim(4) - size(bw_xy,2))/2) ;
+        bw_xy = padarray(bw_xy,[0, pad_width],0,'both') ; 
+    end
+    all_fly_bw.mat(ind1vec, ind2vec) = bw_xy ;   
     
+    % ------------------
     % combine XZ
     i1=XZ ; i2=k ;
     ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-    all_fly_bw.mat(ind1vec, ind2vec) = getImage4D(all_fly_bw_xz, 1, i2+DELTA) ;   
+    % resize XZ if need be
+    bw_xz =  getImage4D(all_fly_bw_xz, 1, i2+DELTA) ; 
+    if size(bw_xz,1) ~= dim(3) 
+        pad_height = round((dim(3) - size(bw_xz,1))/2) ;
+        bw_xz = padarray(bw_xz,[pad_height,0],0,'both') ; 
+    end
+    if size(bw_xz,2) ~= dim(4) 
+        pad_width = round((dim(4) - size(bw_xz,2))/2) ;
+        bw_xz = padarray(bw_xz,[0, pad_width],0,'both') ; 
+    end
+    all_fly_bw.mat(ind1vec, ind2vec) = bw_xz ;
     
+    % ------------------
     % combine YZ
     i1=YZ ; i2=k ;
     ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-    all_fly_bw.mat(ind1vec, ind2vec) = getImage4D(all_fly_bw_yz, 1, i2+DELTA) ;   
+    % resize YZ if need be
+    bw_yz =   getImage4D(all_fly_bw_yz, 1, i2+DELTA) ;   
+    if size(bw_yz,1) ~= dim(3) 
+        pad_height = round((dim(3) - size(bw_yz,1))/2) ;
+        bw_yz = padarray(bw_yz,[pad_height,0],0,'both') ; 
+    end
+    if size(bw_yz,2) ~= dim(4) 
+        pad_width = round((dim(4) - size(bw_yz,2))/2) ;
+        bw_yz = padarray(bw_yz,[0, pad_width],0,'both') ; 
+    end
+    all_fly_bw.mat(ind1vec, ind2vec) = bw_yz ;
 end
 
-
+% ------------------------------------------------
 % combine body_only_bw_** into one structure
 
-dim = body_only_bw_xy.dim ;
+dim = max([body_only_bw_xy.dim ; body_only_bw_xz.dim ; ...
+    body_only_bw_yz.dim]) ; 
+% dim = body_only_bw_xy.dim ;
 newdim = dim ;
 % newdim(1) = dim(1) - 2*DELTA ;
 % newdim(2) = 3 ; % three cams
@@ -250,26 +286,64 @@ Nimages = newdim(2) ;
 % WHEN dealing with body-only need to handle fucking delta.
 
 for k=1:Nimages
+    % --------------------
     % combine XY
     i1=XY ; i2=k ;
     ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-    body_only_bw.mat(ind1vec, ind2vec) = getImage4D(body_only_bw_xy, 1, i2+DELTA) ;   
+    % resize XY if need be
+    bw_xy = getImage4D(body_only_bw_xy, 1, i2+DELTA) ;
+    if size(bw_xy,1) ~= dim(3) 
+        pad_height = round((dim(3) - size(bw_xy,1))/2) ;
+        bw_xy = padarray(bw_xy,[pad_height,0],0,'both') ; 
+    end
+    if size(bw_xy,2) ~= dim(4) 
+        pad_width = round((dim(4) - size(bw_xy,2))/2) ;
+        bw_xy = padarray(bw_xy,[0, pad_width],0,'both') ; 
+    end   
+    body_only_bw.mat(ind1vec, ind2vec) = bw_xy ;   
     
+    % --------------------
     % combine XZ
     i1=XZ ; i2=k ;
     ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-    body_only_bw.mat(ind1vec, ind2vec) = getImage4D(body_only_bw_xz, 1, i2+DELTA) ;   
+    % resize XZ if need be
+    bw_xz = getImage4D(body_only_bw_xz, 1, i2+DELTA) ; 
+    if size(bw_xz,1) ~= dim(3) 
+        pad_height = round((dim(3) - size(bw_xz,1))/2) ;
+        bw_xz = padarray(bw_xz,[pad_height,0],0,'both') ; 
+    end
+    if size(bw_xz,2) ~= dim(4) 
+        pad_width = round((dim(4) - size(bw_xz,2))/2) ;
+        bw_xz = padarray(bw_xz,[0, pad_width],0,'both') ; 
+    end
+    body_only_bw.mat(ind1vec, ind2vec) = bw_xz;   
     
+    % --------------------
     % combine YZ
     i1=YZ ; i2=k ;
     ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
     ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-    body_only_bw.mat(ind1vec, ind2vec) = getImage4D(body_only_bw_yz, 1, i2+DELTA) ;   
+    % resize YZ if need be
+    bw_yz = getImage4D(body_only_bw_yz, 1, i2+DELTA)  ;   
+    if size(bw_yz,1) ~= dim(3) 
+        pad_height = round((dim(3) - size(bw_yz,1))/2) ;
+        bw_yz = padarray(bw_yz,[pad_height,0],0,'both') ; 
+    end
+    if size(bw_yz,2) ~= dim(4) 
+        pad_width = round((dim(4) - size(bw_yz,2))/2) ;
+        bw_yz = padarray(bw_yz,[0, pad_width],0,'both') ; 
+    end
+    body_only_bw.mat(ind1vec, ind2vec) = bw_yz ;   
 end
+
+% ------------------------------------------------------
+% combine binarized images that include legs, if using
+
 if isfield(with_legs_bw_xy, 'dim')
-    dim = with_legs_bw_xy.dim ;
+    dim = max([with_legs_bw_xy.dim ; with_legs_bw_xz.dim ; with_legs_bw_yz.dim]) ; 
+    % dim = with_legs_bw_xy.dim ;
     newdim = dim ;
     % newdim(1) = dim(1) - 2*DELTA ;
     % newdim(2) = 3 ; % three cams
@@ -280,26 +354,56 @@ if isfield(with_legs_bw_xy, 'dim')
     % Nimages = newdim(1) ;
     Nimages = newdim(2) ;
     for k=1:Nimages
+        % -------------------------
         % combine XY
         i1=XY ; i2=k ;
         ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
         ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-        with_legs_bw.mat(ind1vec, ind2vec) = ...
-            getImage4D(with_legs_bw_xy, 1, i2+DELTA) ;
+        % resize XY if need be
+        bw_xy = getImage4D(with_legs_bw_xy, 1, i2+DELTA) ;
+        if size(bw_xy,1) ~= dim(3)
+            pad_height = round((dim(3) - size(bw_xy,1))/2) ;
+            bw_xy = padarray(bw_xy,[pad_height,0],0,'both') ;
+        end
+        if size(bw_xy,2) ~= dim(4)
+            pad_width = round((dim(4) - size(bw_xy,2))/2) ;
+            bw_xy = padarray(bw_xy,[0, pad_width],0,'both') ;
+        end
+        with_legs_bw.mat(ind1vec, ind2vec) = bw_xy ;
         
+        % -------------------------
         % combine XZ
         i1=XZ ; i2=k ;
         ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
         ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-        with_legs_bw.mat(ind1vec, ind2vec) = ...
-            getImage4D(with_legs_bw_xz, 1, i2+DELTA) ;
+        % resize XZ if need be
+        bw_xz = getImage4D(with_legs_bw_xz, 1, i2+DELTA) ;
+        if size(bw_xz,1) ~= dim(3)
+            pad_height = round((dim(3) - size(bw_xz,1))/2) ;
+            bw_xz = padarray(bw_xz,[pad_height,0],0,'both') ;
+        end
+        if size(bw_xz,2) ~= dim(4)
+            pad_width = round((dim(4) - size(bw_xz,2))/2) ;
+            bw_xz = padarray(bw_xz,[0, pad_width],0,'both') ;
+        end
+        with_legs_bw.mat(ind1vec, ind2vec) = bw_xz ;
         
+        % -------------------------
         % combine YZ
         i1=YZ ; i2=k ;
         ind1vec = dim(3)*(i1-1) +  (1:dim(3)) ;
         ind2vec = dim(4)*(i2-1) +  (1:dim(4)) ;
-        with_legs_bw.mat(ind1vec, ind2vec) = ...
-            getImage4D(with_legs_bw_yz, 1, i2+DELTA) ;
+        % resize YZ if need be
+        bw_yz = getImage4D(with_legs_bw_yz, 1, i2+DELTA) ;
+        if size(bw_yz,1) ~= dim(3)
+            pad_height = round((dim(3) - size(bw_yz,1))/2) ;
+            bw_yz = padarray(bw_yz,[pad_height,0],0,'both') ;
+        end
+        if size(bw_yz,2) ~= dim(4)
+            pad_width = round((dim(4) - size(bw_yz,2))/2) ;
+            bw_yz = padarray(bw_yz,[0, pad_width],0,'both') ;
+        end
+        with_legs_bw.mat(ind1vec, ind2vec) = bw_yz ;
     end
 else
     with_legs_bw = [] ;
@@ -312,14 +416,20 @@ disp(['Done combining for movie ' movieNum])
 % CM_pos is the center-of-mass of the body in each image. 
 % dimension of CM_pos is (3cameras, Nimages, 2coordinates)
 
+% first adjust for any size changes we may have made to images
+pad_amt_yz = all_fly_bw.dim(3:4) - all_fly_bw_yz.dim(3:4) ; 
+pad_amt_xz = all_fly_bw.dim(3:4) - all_fly_bw_xz.dim(3:4) ; 
+pad_amt_xy = all_fly_bw.dim(3:4) - all_fly_bw_xy.dim(3:4) ; 
+
+% then combine CM measured from each camera into CM_pos
 CM_pos = zeros(3, Nimages, 2) ;
 ind = (1:Nimages) + DELTA ;
-CM_pos(XY, :,1) = xcm_xy(ind) ;
-CM_pos(XY, :,2) = ycm_xy(ind) ;
-CM_pos(XZ, :,1) = xcm_xz(ind) ;
-CM_pos(XZ, :,2) = ycm_xz(ind) ;
-CM_pos(YZ, :,1) = xcm_yz(ind) ;
-CM_pos(YZ, :,2) = ycm_yz(ind) ;
+CM_pos(XY, :,1) = xcm_xy(ind) + pad_amt_xy(2)/2 ;
+CM_pos(XY, :,2) = ycm_xy(ind) + pad_amt_xy(1)/2;
+CM_pos(XZ, :,1) = xcm_xz(ind) + pad_amt_xz(2)/2;
+CM_pos(XZ, :,2) = ycm_xz(ind) + pad_amt_xz(1)/2;
+CM_pos(YZ, :,1) = xcm_yz(ind) + pad_amt_yz(2)/2;
+CM_pos(YZ, :,2) = ycm_yz(ind) + pad_amt_yz(1)/2;
 
 
 %% DEFINE PARAMS
@@ -335,7 +445,8 @@ params.fps = 8000 ;
 % easyWandData.DLTtranslationVector(:,:,1)';...
 % easyWandData.DLTtranslationVector(:,:,3)'];  % row1=yz, row2=xz, row3=xy
 params.cameraNames = ['yz';'xz';'xy'];
-params.detectorLengthPix=512;
+%params.detectorLengthPix=512;
+params.detectorLengthPix = all_fly_bw.dim(3:4) ;  % [imageHeight, imageWidth]
 params.voxelSize = 50e-6 ; % 50 microns
 %params.N=120; % 
 params.volLength= 8e-3 ; % size of the square sub-vol cube to reconstruct (meters)
@@ -362,7 +473,7 @@ if savePointFlag
     'ycm_xz', 'allAxlim_xz', 'all_fly_bw_yz', 'body_only_bw_yz', ...
     'all_fly_thresholds_yz', 'xcm_yz', 'ycm_yz', 'allAxlim_yz', ...
     'with_legs_bw_xy', 'with_legs_bw_xz', 'with_legs_bw_yz', 'all_fly_bw',...
-    'body_only_bw', 'with_legs_bw', 'params', 'easyWandData')
+    'body_only_bw', 'with_legs_bw', 'params', 'easyWandData', 'CM_pos')
 end
 
 %% VIZ body vs. whole fly featuring
@@ -399,7 +510,7 @@ try
     [ bodyRes, bodyFrameStartInd, bodyFrameEndInd, ...
         wing1Res, wing1FrameStartInd, wing1FrameEndInd, ...
         wing2Res, wing2FrameStartInd, wing2FrameEndInd, mergedWingsFlag ] = ...
-        hullReconstruction_mk5(params, CM_pos, all_fly_bw, body_only_bw, ...
+        hullReconstruction_mk6(params, CM_pos, all_fly_bw, body_only_bw, ...
          dlt_matrix, easyWandData,[2,1,3]);
 catch exception
     msg = strcat('Error reconstructing hulls for movie ', movieNum) ;
@@ -410,6 +521,7 @@ catch exception
     fprintf(fileID, '%s\r\n', ' ') ;
     fclose(fileID) ;
     errorFlag = true ;
+    delete(gcp) ;
     return
 end
 % [ bodyRes, bodyFrameStartInd, bodyFrameEndInd, ...
@@ -491,6 +603,7 @@ if (exist('resultsFileName','var') ~= 1)
 end
 
 savePathFull = fullfile(savePath, prefixStr, [resultsFileName '.mat']) ; 
+if exist('allBG','var')
 save(savePathFull, 'data', 'bodyRes', 'bodyFrameStartInd', 'bodyFrameEndInd', ...
     'wing1Res', 'wing1FrameStartInd', 'wing1FrameEndInd', ...
     'wing2Res', 'wing2FrameStartInd', 'wing2FrameEndInd', 'mergedWingsFlag', ...
@@ -502,6 +615,20 @@ save(savePathFull, 'data', 'bodyRes', 'bodyFrameStartInd', 'bodyFrameEndInd', ..
     'ycm_xz', 'allAxlim_xz', 'all_fly_bw_yz', 'body_only_bw_yz', ...
     'all_fly_thresholds_yz', 'xcm_yz', 'ycm_yz', 'allAxlim_yz', ...
     'tin', 'tout', 'resultsFileName')   
+else
+save(savePathFull, 'data', 'bodyRes', 'bodyFrameStartInd', 'bodyFrameEndInd', ...
+    'wing1Res', 'wing1FrameStartInd', 'wing1FrameEndInd', ...
+    'wing2Res', 'wing2FrameStartInd', 'wing2FrameEndInd', 'mergedWingsFlag', ...
+    'params',  'CM_pos', 'all_fly_bw', 'body_only_bw',  'with_legs_bw',...
+    'dlt_matrix', 'easyWandData', ...
+    'cinFilenames', 'allBGcell', 'Nimages', 'all_fly_bw_xy',  'body_only_bw_xy',...
+    'all_fly_thresholds_xy',  'xcm_xy', 'ycm_xy', 'allAxlim_xy', 'DELTA', ...
+    'all_fly_bw_xz', 'body_only_bw_xz', 'all_fly_thresholds_xz', 'xcm_xz',...
+    'ycm_xz', 'allAxlim_xz', 'all_fly_bw_yz', 'body_only_bw_yz', ...
+    'all_fly_thresholds_yz', 'xcm_yz', 'ycm_yz', 'allAxlim_yz', ...
+    'tin', 'tout', 'resultsFileName')       
+end
+
 
 %dos(['move/y results_temp.mat ' resultsFileName '.mat']) ;
 

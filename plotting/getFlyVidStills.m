@@ -145,6 +145,16 @@ if plotFlag
 end
 % -------------------------------------------------------------------------
 %% save combined images?
+% % try to save with transparent background
+% alpha_xy = uint8(255*ones(size(im_xy_final))) ; 
+% alpha_xy(im_xy_final > 254) = 0 ; 
+% 
+% alpha_xz = uint8(255*ones(size(im_xz_final))) ; 
+% alpha_xz(im_xz_final > 254) = 0 ;  
+% 
+% alpha_yz = uint8(255*ones(size(im_yz_final))) ; 
+% alpha_yz(im_yz_final > 254) = 0 ; 
+
 if saveFlag
     imwrite(im_xy_final, fullfile(savePath, 'combined_im_XY.png'))
     imwrite(im_xz_final, fullfile(savePath, 'combined_im_XZ.png'))
