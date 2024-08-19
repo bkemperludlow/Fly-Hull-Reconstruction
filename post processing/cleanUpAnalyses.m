@@ -10,7 +10,7 @@
 % -----------------------------
 % set path for experiment folder wherein analysis is still needed
 
-pathToWatch = 'E:\VNC MN Chrimson\45_16082019\' ; 
+pathToWatch = 'E:\Opto Mechanical\198_15082024\' ; 
 
 % do full analysis, new reconstruction method, just angles, or other?
 analysisType = 'clean_wings' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
@@ -29,7 +29,7 @@ ExprNum = str2double(folderSplit{1}) ;
 
 % set movie numbers that need to be analyzed
 
-MovNum = [30,51] ; %
+MovNum = [3,7,12,16,28,34,36] ; %
 
 Nmovies = length(MovNum) ;
 
