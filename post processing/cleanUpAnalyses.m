@@ -29,7 +29,7 @@ ExprNum = str2double(folderSplit{1}) ;
 
 % set movie numbers that need to be analyzed
 
-MovNum = 74 ; %
+MovNum = [74,8] ; %
 
 Nmovies = length(MovNum) ;
 
