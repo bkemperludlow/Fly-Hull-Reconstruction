@@ -733,7 +733,7 @@ end % function hullReconstruction_mk5(...)
 
 % ------------------------------------------------------------------------
 
-function bool = checkVoxel(r, dlt_xz, dlt_yz, dlt_xy, imxz, imyz, imxy, detectorLengthPix) % was a "nested function", not it's not (due to parfor)
+function bool = checkVoxel(r, dlt_xz, dlt_yz, dlt_xy, imxz, imyz, imxy, detectorLengthPix) % was a "nested function", now it's not (due to parfor)
 
 bool = false ; % default value
 %r1=R'*r';
