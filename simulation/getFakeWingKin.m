@@ -158,6 +158,8 @@ phi_m = (phi_b - phi_f)/2 ;
 phi = phi_0 + phi_m.*(asin(K.*sin(omega.*t)))/asin(K) ;
 phi_dot = (phi_m*K*omega.*cos(omega.*t))./sqrt(1 - K^2.*(sin(omega*t)).^2) ;
 
+% change duty cycle by changing sampling of first and second half?
+
 end
 
 % ----------------

@@ -5,11 +5,12 @@
 %% params
 saveFlag = true ; % save output?
 insetFlag = true ; % make zoomed-in image of fly?
-optoFlag = true ;  % add drawing of optogenetic light?
-savePrefix = '' ; % any additional string to affix to filenames
-pinType = 2 ;    % type of pin on fly. 0 = no pin , 1 = roll pin, 2 = pitch
+optoFlag = false ;  % add drawing of optogenetic light?
+saveSuffix = '_newmagnet' ; % any additional string to affix to filenames
+pinType = 1 ;    % type of pin on fly. 0 = no pin , 1 = roll pin, 2 = pitch
+coilFlag = true ; % True if we want the coils drawn, false otherwise
 
-savePath = pwd ; % ALTER AS NEEDED
+savePath = 'C:\Users\Kemper\Documents\first axillary paper figures\Figure 1' ; % ALTER AS NEEDED
 % saveName = 'schematic_no_LED' ; 
 % ----------------------
 % overall scales
@@ -90,13 +91,14 @@ cam_xy = draw3Dcamera(ax, parent, camLen, camWid, camDep, center_xy, ...
 
 % draw chamber
 flight_chamber = draw3DflightChamber(ax, parent, chamberSideLength, ...
-    frameCrossSection, lineScale) ; 
+    frameCrossSection, lineScale, [], [], [], [], [], [], ...
+    coilFlag) ; 
 
 % put some flies in the chamber 
 flyGrpList = gobjects(N_flies) ; 
 for ind = 1:N_flies
     [flyGrp, ~, rightWingGrp, leftWingGrp, dL, ~, ~] = draw3Dfly(ax, ...
-        flyScale, resolution, pinType, thetab0, flyGridFlag);
+        flyScale, resolution, pinType, thetab0, flyGridFlag, 'magnet');
     setFlyDOF(flyGrp, rightWingGrp, leftWingGrp, bodyPos(ind,:), ...
         bodyYPR(ind,:), rightYPR(ind,:) , leftYPR(ind,:), thetab0, dL )
     
@@ -142,7 +144,9 @@ if saveFlag
     K = 4 ; 
     set(fig,'InvertHardcopy','off');
     print(fig,['-r',num2str(screen_DPI*K)], '-dpng', ...
-        fullfile(savePath, 'setup_schematic_im2.png'));
+        fullfile(savePath, ['setup_schematic_im2' saveSuffix '.png']));
+    print(fig,['-r',num2str(screen_DPI*K)], '-dsvg', ...
+        fullfile(savePath, ['setup_schematic_im2' saveSuffix '.svg']));
     %print(gcf, fullfile(savePath, 'setup_schematic.png'),'-dpng','-r600')
     %imwrite(gcf,fullfile(savePath, 'setup_schematic_im.png'))
 end
@@ -162,7 +166,7 @@ if insetFlag
     
     %  draw fly
     [flyGrp, ~, rightWingGrp, leftWingGrp, dL, ~, ~] = draw3Dfly(ax, ...
-        flyScaleIncrease*flyScale, resolution, pinType, thetab0, true);
+        flyScaleIncrease*flyScale, resolution, pinType, thetab0, true, 'magnet');
     setFlyDOF(flyGrp, rightWingGrp, leftWingGrp, bodyPos(1,:), bodyYPR(1,:), ...
         rightYPR(1,:) , leftYPR(1,:), thetab0, dL )
     
@@ -200,10 +204,10 @@ if insetFlag
         K = 4 ;
         set(h_justFly,'InvertHardcopy','off');
         print(h_justFly,['-r',num2str(screen_DPI*K)], '-dpng', ...
-            fullfile(savePath, 'just_fly_im2.png'));
+            fullfile(savePath, ['just_fly_im2' saveSuffix '.png']));
         
         myaa ;
         F = getframe ;
-        imwrite(F.cdata,fullfile(savePath, 'just_fly_im.png'))
+        imwrite(F.cdata,fullfile(savePath, ['just_fly_im' saveSuffix '.png']))
     end
 end

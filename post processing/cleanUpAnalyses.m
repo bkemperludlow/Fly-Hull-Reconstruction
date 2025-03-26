@@ -9,13 +9,18 @@
 %% set parameters/paths
 % -----------------------------
 % set path for experiment folder wherein analysis is still needed
+<<<<<<< Updated upstream
 pathToWatch = 'E:\VNC MN Chrimson\45_16082019\' ; 
+=======
+
+pathToWatch = 'E:\VNC MN Chrimson\31_11062019\' ; 
+>>>>>>> Stashed changes
 
 % do full analysis, new reconstruction method, just angles, or other?
-analysisType = 'clean_wings' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
+analysisType = 'extreme_roll' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
 
 clustFlag = true ; % shich version of analysis script to run
-largePertFlag = false  ; % is it a large perturbation?
+largePertFlag = true  ; % is it a large perturbation?
 removeLegsFlag = true ; % try to remove legs in binary threshold?
 alignBBoxFlag = false ; % try to align images to avoid clipping?
 
@@ -26,7 +31,13 @@ folderSplit = strsplit(pathSplit{end-1},'_') ;
 ExprNum = str2double(folderSplit{1}) ;
 
 % set movie numbers that need to be analyzed
+<<<<<<< Updated upstream
 MovNum = [30,51] ; %
+=======
+
+MovNum = [4 7 9] ; %
+
+>>>>>>> Stashed changes
 Nmovies = length(MovNum) ;
 
 % run analysis of movies

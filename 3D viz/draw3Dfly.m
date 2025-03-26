@@ -88,6 +88,22 @@ switch colorScheme
         abdomenColor = 0.7*[1 1 1] ;
         rightWingColor = [17 119 51]/255 ;%[255, 100, 100]/255*.6 ; %[1 0 0 ]
         leftWingColor  = [17 119 51]/255 ;%[255, 100, 100]/255*.6  ; % [0.5 0.5 1 ]
+    case 'sim_kemper'
+        pinColor = 0.5*[1 1 1] ;
+        eyeColor = 0.5*[1 1 1] ; % [0.9 0.0 0.0] ;
+        thoraxColor = 0.6*[1 1 1] ;
+        headColor   = 0.7*[1 1 1]  ;
+        abdomenColor = 0.7*[1 1 1] ;
+        rightWingColor = [221 170 51]/255 ; %yellow
+        leftWingColor  = 0.4*[1 1 1] ; % 0.4*[1 1 1]  ; % [0.5 0.5 1 ]
+    case 'magnet'
+        pinColor = [1 0 0 ; 0 0 1] ;
+        eyeColor = [255 85 52] / 255 ; % [0.9 0.0 0.0] ;
+        thoraxColor = [194 97 20] / 255 ;
+        headColor   = [217 185 136]/255 ;
+        abdomenColor = mean([thoraxColor ; headColor]) ;
+        rightWingColor = [194 97 20]/255*.6 ; %[1 0 0 ]
+        leftWingColor  = [194 97 20]/255*.6  ; % [0.5 0.5 1 ]
     otherwise
         fprintf('Invalid color scheme selection: %s \n', colorScheme)
 end
@@ -290,39 +306,90 @@ set(bodyGrp,'Matrix',R2*R1) ;
 % magnetic pin
 switch (pinType)
     case 1 % roll pin
-        [Z, X, Y] = cylinder ;
-        Y = (Y - 0.5)*scale*pinLength ;
-        Z = Z*scale*pinRadius - thoraxRadius*scale;
-        X = X*pinRadius*scale ;
-        pin = surf(X,Y,Z,'linestyle',pinLineStyleStr) ;
-        
-        C = zeros([size(X) 3]) ;
-        C(:,:,1) = pinColor(1) ;
-        C(:,:,2) = pinColor(2) ;
-        C(:,:,3) = pinColor(3) ;
-        set(pin,'CData',C) ;
-        
-        % disks that seal the pin cylinder
-        % disk 1
-        t = linspace(0,2*pi, resolution) ;
-        X = scale*pinRadius * cos(t) ;
-        Y = zeros(size(X))  + 0.5*scale*pinLength ;
-        Z = scale*pinRadius * sin(t) - thoraxRadius*scale;
-        C = zeros([size(X) 3]) ;
-        C(:,:,1) = pinColor(1) ;
-        C(:,:,2) = pinColor(2) ;
-        C(:,:,3) = pinColor(3) ;
-        hdisk1 = patch(X,Y,Z,C,'linestyle',pinLineStyleStr) ;
-        
-        % disk2
-        Y = Y - scale*pinLength ;
-        hdisk2 = patch(X,Y,Z,C,'linestyle',pinLineStyleStr) ;
-        
-        pinGrp = hgtransform('Parent',thoraxGrp);
-        set([pin hdisk1 hdisk2],'Parent',pinGrp) ;
-        
-        R1 = makehgtform('yrotate',-pi/4) ;
-        set(pinGrp,'Matrix',R1) ;
+        if size(pinColor,1) == 1
+            [Z, X, Y] = cylinder ;
+            Y = (Y - 0.5)*scale*pinLength ;
+            Z = Z*scale*pinRadius - thoraxRadius*scale;
+            X = X*pinRadius*scale ;
+            pin = surf(X,Y,Z,'linestyle',pinLineStyleStr) ;
+
+            C = zeros([size(X) 3]) ;
+            C(:,:,1) = pinColor(1) ;
+            C(:,:,2) = pinColor(2) ;
+            C(:,:,3) = pinColor(3) ;
+            set(pin,'CData',C) ;
+
+            % disks that seal the pin cylinder
+            % disk 1
+            t = linspace(0,2*pi, resolution) ;
+            X = scale*pinRadius * cos(t) ;
+            Y = zeros(size(X))  + 0.5*scale*pinLength ;
+            Z = scale*pinRadius * sin(t) - thoraxRadius*scale;
+            C = zeros([size(X) 3]) ;
+            C(:,:,1) = pinColor(1) ;
+            C(:,:,2) = pinColor(2) ;
+            C(:,:,3) = pinColor(3) ;
+            hdisk1 = patch(X,Y,Z,C,'linestyle',pinLineStyleStr) ;
+
+            % disk2
+            Y = Y - scale*pinLength ;
+            hdisk2 = patch(X,Y,Z,C,'linestyle',pinLineStyleStr) ;
+
+            pinGrp = hgtransform('Parent',thoraxGrp);
+            set([pin hdisk1 hdisk2],'Parent',pinGrp) ;
+
+            R1 = makehgtform('yrotate',-pi/4) ;
+            set(pinGrp,'Matrix',R1) ;
+        else
+            [Z, X, Y] = cylinder ;
+            Y = (Y - 0.5)*scale*pinLength ;
+            Z = Z*scale*pinRadius - thoraxRadius*scale;
+            X = X*pinRadius*scale ;
+
+            Y2 = [Y(1,:) ; zeros(1,size(Y,2))] ;
+            Y1 = [zeros(1,size(Y,2)) ; Y(2,:)] ;
+
+            pin1 = surf(X,Y1,Z,'linestyle',pinLineStyleStr) ;
+            pin2 = surf(X,Y2,Z,'linestyle',pinLineStyleStr) ;
+
+            C1 = zeros([size(X) 3]) ;
+            C1(:,:,1) = pinColor(1,1) ;
+            C1(:,:,2) = pinColor(1,2) ;
+            C1(:,:,3) = pinColor(1,3) ;
+            set(pin1,'CData',C1) ;
+
+            C2 = zeros([size(X) 3]) ;
+            C2(:,:,1) = pinColor(2,1) ;
+            C2(:,:,2) = pinColor(2,2) ;
+            C2(:,:,3) = pinColor(2,3) ;
+            set(pin2,'CData',C2) ;
+
+            % disks that seal the pin cylinder
+            % disk 1
+            t = linspace(0,2*pi, resolution) ;
+            X = scale*pinRadius * cos(t) ;
+            Y = zeros(size(X))  + 0.5*scale*pinLength ;
+            Z = scale*pinRadius * sin(t) - thoraxRadius*scale;
+            C1 = zeros([size(X) 3]) ;
+            C1(:,:,1) = pinColor(1,1) ;
+            C1(:,:,2) = pinColor(1,2) ;
+            C1(:,:,3) = pinColor(1,3) ;
+            hdisk1 = patch(X,Y,Z,C1,'linestyle',pinLineStyleStr) ;
+
+            % disk2
+            Y = Y - scale*pinLength ;
+            C2 = zeros([size(X) 3]) ;
+            C2(:,:,1) = pinColor(2,1) ;
+            C2(:,:,2) = pinColor(2,2) ;
+            C2(:,:,3) = pinColor(2,3) ;
+            hdisk2 = patch(X,Y,Z,C2,'linestyle',pinLineStyleStr) ;
+
+            pinGrp = hgtransform('Parent',thoraxGrp);
+            set([pin1 pin2 hdisk1 hdisk2],'Parent',pinGrp) ;
+
+            R1 = makehgtform('yrotate',-pi/4) ;
+            set(pinGrp,'Matrix',R1) ;
+        end
     case 2
         [Z, Y, X] = cylinder ;
         Y = Y*pinRadius*scale ;
@@ -360,6 +427,7 @@ switch (pinType)
         set(pinGrp,'Matrix',T1R1) ;
         
         set(pinGrp,'Parent',thoraxGrp)
+    case 0
 end
 % antennea
 

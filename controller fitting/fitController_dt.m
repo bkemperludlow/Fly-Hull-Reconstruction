@@ -49,7 +49,7 @@ if ~exist('debugFlag2','var') || isempty(debugFlag2)
     debugFlag2 = true ;
 end
 if ~exist('smoothFlag','var') || isempty(smoothFlag)
-    smoothFlag = false ;
+    smoothFlag = true ;
 end
 if ~exist('verboseFlag','var') || isempty(verboseFlag)
     verboseFlag = true ;

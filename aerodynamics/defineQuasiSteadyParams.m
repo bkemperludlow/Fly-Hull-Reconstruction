@@ -39,14 +39,14 @@ freq = 225 ; % 230 %Hz %was 250
 omega = 2*pi*freq ; 
 
 % % wing span
-% span = .0025 ; %meters %.002
+ span = .0025 ; %meters %.002
 
 % wing chord
 chord = .0007 ; %meters %.001
 
 % wing area
-S = 2.023e-6 + span*1.748e-3 ; % meters^2, formula from (Fry, Sayaman, Dickinson, 2005)
-%S = pi*(span/2)*(chord/2) ; %area of ellipse
+%S = 2.023e-6 + span*1.748e-3 ; % meters^2, formula from (Fry, Sayaman, Dickinson, 2005)
+S = pi*(span/2)*(chord/2) ; %area of ellipse 
 
 % % second moment of wing inertia
 % r22_S = .313 ; %Sane+Dickinson (2002) gives .4, Cheng et al. (2009) gives .313
@@ -141,8 +141,8 @@ phi_b = phi_0 + phi_m ;  % dorsal limit of stroke angle (units as phi_0, phi_m)
 phi_f = phi_0 - phi_m ;  % ventral limit of stroke angle (units as phi_0, phi_m)
 K = .7 ;  % shape factor for stroke angle. 0 <= K <= 1
 
-theta_0 = 0 ;  %deg, midpoint of deviation angle
-theta_m = 0 ;   %deg, amplitude of deviation angle
+theta_0 = 10 ;  %deg, midpoint of deviation angle
+theta_m = 10 ;   %deg, amplitude of deviation angle
 del_theta = 0 ;  %rad, phase offset of deviation angle
 
 % ---------------------------------------------

@@ -4,11 +4,11 @@
 % -------------------------------------------------------------------------
 %% params
 saveFlag = false;
-schematicType = 'body' ; % 'body' | 'wing' | 'wingFrame'
-labelFlag = true ; 
+schematicType = 'wing' ; % 'body' | 'wing' | 'wingFrame'
+labelFlag = false ; 
 pinType = 0 ;
 
-savePath = pwd ; % TO BE ALTERED
+savePath = 'C:\Users\Kemper\Documents\first axillary paper figures\Figure 1' ; % TO BE ALTERED
     
 % ----------------------
 % overall scales
