@@ -14,10 +14,17 @@ pathToWatch = 'E:\VNC MN Chrimson\45_16082019\' ;
 =======
 
 pathToWatch = 'E:\VNC MN Chrimson\31_11062019\' ; 
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes
 
 % do full analysis, new reconstruction method, just angles, or other?
 analysisType = 'extreme_roll' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
+=======
+
+% do full analysis, new reconstruction method, just angles, or other?
+analysisType = 'extreme_roll' ; % 'extreme_roll' ; %'clean_wings' ; 'correct_ahat'  ; 
+
+>>>>>>> Stashed changes
 
 clustFlag = true ; % shich version of analysis script to run
 largePertFlag = true  ; % is it a large perturbation?
