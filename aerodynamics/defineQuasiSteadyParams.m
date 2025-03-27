@@ -45,8 +45,8 @@ omega = 2*pi*freq ;
 chord = .0007 ; %meters %.001
 
 % wing area
-S = 2.023e-6 + span*1.748e-3 ; % meters^2, formula from (Fry, Sayaman, Dickinson, 2005)
-%S = pi*(span/2)*(chord/2) ; %area of ellipse
+%S = 2.023e-6 + span*1.748e-3 ; % meters^2, formula from (Fry, Sayaman, Dickinson, 2005)
+S = pi*(span/2)*(chord/2) ; %area of ellipse
 
 % % second moment of wing inertia
 % r22_S = .313 ; %Sane+Dickinson (2002) gives .4, Cheng et al. (2009) gives .313
